@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
   <title>NutriDaily - AI食事・栄養管理</title>
   
   <meta name="theme-color" content="#059669">
@@ -10,229 +10,881 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="NutriDaily">
   
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js for nutrition & weight trends -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+            }
+          }
+        }
+      }
+    }
+  </script>
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap');
-    body { font-family: 'Inter', 'Noto Sans JP', -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
-    input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-    input[type="number"] { -moz-appearance: textfield; }
-    .pb-safe { padding-bottom: env(safe-area-inset-bottom, 1rem); }
+    body {
+      font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .pb-safe {
+      padding-bottom: env(safe-area-inset-bottom, 1rem);
+    }
+    .modal-keyboard-container {
+      max-height: calc(100dvh - 1.5rem);
+    }
+    @media (max-width: 640px) {
+      .modal-mobile-top {
+        align-items: flex-start !important;
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+      }
+      .modal-mobile-card {
+        max-height: 86dvh !important;
+      }
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen pb-28 md:pb-12 antialiased selection:bg-emerald-500 selection:text-white">
 
-  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200">
-    <div class="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-2">
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
+    <div class="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2">
+      <!-- App Brand Logo -->
       <div class="flex items-center gap-2 shrink-0">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-xs">
-          <i class="fa-solid fa-apple-whole text-lg"></i>
+        <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-xs">
+          <i class="fa-solid fa-apple-whole text-base sm:text-lg"></i>
         </div>
         <div>
           <div class="flex items-center gap-1.5">
-            <h1 class="font-extrabold text-base tracking-tight text-slate-800">NutriDaily</h1>
-            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 uppercase">AI Live</span>
+            <h1 class="font-extrabold text-sm sm:text-base tracking-tight text-slate-800">NutriDaily</h1>
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 uppercase tracking-wider">AI Live</span>
           </div>
-          <p class="text-[10px] text-slate-400 font-medium leading-none">Smart Nutrition Tracker</p>
+          <p class="hidden sm:block text-[10px] text-slate-400 font-medium leading-none">Smart Gemini Nutrition Tracker</p>
         </div>
       </div>
 
-      <div class="flex items-center gap-2">
-        <button onclick="openSettingsModal()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition text-xs font-bold border border-slate-200 flex items-center gap-1.5">
-          <i class="fa-solid fa-sliders"></i>
-          <span>設定</span>
+      <!-- Desktop Action Buttons -->
+      <div class="hidden md:flex items-center gap-2">
+        <button onclick="openSmartLogModal()" class="px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white rounded-xl shadow-xs transition flex items-center gap-1.5 text-xs font-bold active:scale-95">
+          <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
+          <span>一括AI自然言語入力</span>
+        </button>
+        <button onclick="openPhotoModal()" class="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-xs transition flex items-center gap-1.5 text-xs font-bold active:scale-95">
+          <i class="fa-solid fa-camera text-xs"></i>
+          <span>写真/JANスキャン</span>
+        </button>
+        <button onclick="openSearchModal()" class="px-3 py-1.5 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white rounded-xl shadow-xs transition flex items-center gap-1.5 text-xs font-bold active:scale-95">
+          <i class="fa-brands fa-google text-xs"></i>
+          <span>AI外食検索</span>
+        </button>
+        <button onclick="openSuggestModal()" class="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-xs transition flex items-center gap-1.5 text-xs font-bold active:scale-95">
+          <i class="fa-solid fa-lightbulb text-xs"></i>
+          <span>不足献立提案</span>
+        </button>
+        <button onclick="openInNewTab()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition text-xs font-semibold flex items-center gap-1 border border-slate-200" title="別タブで全画面表示">
+          <i class="fa-solid fa-up-right-from-square text-xs"></i>
+          <span>全画面</span>
+        </button>
+        <button onclick="openSettingsModal()" class="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition text-xs border border-slate-200" title="目標・APIキー設定">
+          <i class="fa-solid fa-sliders text-sm"></i>
+        </button>
+        <button onclick="exportData()" class="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition text-xs border border-slate-200" title="バックアップ保存">
+          <i class="fa-solid fa-download text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Mobile Action Buttons (Compact 1-line) -->
+      <div class="flex md:hidden items-center gap-1.5 shrink-0">
+        <button onclick="openSmartLogModal()" class="px-2 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold active:scale-95 flex items-center gap-1">
+          <i class="fa-solid fa-wand-magic-sparkles text-[11px]"></i>
+          <span class="text-[11px]">AI一括</span>
+        </button>
+        <button onclick="openSearchModal()" class="p-1.5 bg-sky-50 text-sky-700 border border-sky-200 rounded-xl active:scale-95" title="AI外食検索">
+          <i class="fa-brands fa-google text-xs"></i>
+        </button>
+        <button onclick="openSettingsModal()" class="p-1.5 text-slate-600 border border-slate-200 rounded-xl active:scale-95" title="設定">
+          <i class="fa-solid fa-sliders text-xs"></i>
         </button>
       </div>
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-4 py-4 space-y-4">
-    <!-- 日付ナビゲーション -->
-    <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-xs flex items-center justify-between gap-2">
-      <div class="flex items-center gap-1.5">
-        <button onclick="shiftDate(-1)" class="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center"><i class="fa-solid fa-chevron-left text-xs"></i></button>
-        <input type="date" id="date-picker-input" onchange="onDateInputChange(this.value)" class="text-xs sm:text-sm font-bold bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus:outline-none">
-        <button onclick="shiftDate(1)" class="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center"><i class="fa-solid fa-chevron-right text-xs"></i></button>
-        <button onclick="goToToday()" class="px-2.5 py-1.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold">今日</button>
+  <main class="max-w-6xl mx-auto px-3 sm:px-4 py-4 space-y-4 sm:space-y-6">
+
+    <!-- API Key Notice Banner -->
+    <div id="api-key-banner" class="hidden p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between gap-2 text-xs text-amber-800">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-triangle-exclamation text-amber-600 text-sm"></i>
+        <span><strong>APIキーが未設定です:</strong> AI食事解析や音声機能を利用するには「設定（⚙️）」からGemini APIキーを保存してください。</span>
       </div>
-      <button onclick="openMealModal()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs">
-        <i class="fa-solid fa-plus text-xs"></i><span>食事を記録</span>
-      </button>
+      <button onclick="openSettingsModal()" class="px-3 py-1 bg-amber-600 text-white font-bold rounded-lg text-xs whitespace-nowrap">設定する</button>
     </div>
 
-    <!-- カロリー & PFC -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-      <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
+    <!-- Date Navigation Bar -->
+    <div class="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200 shadow-xs flex items-center justify-between gap-2">
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <button onclick="shiftDate(-1)" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95">
+          <i class="fa-solid fa-chevron-left text-xs"></i>
+        </button>
+        <div class="relative flex items-center">
+          <input type="date" id="date-picker-input" onchange="onDateInputChange(this.value)" class="text-xs sm:text-sm font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer">
+        </div>
+        <button onclick="shiftDate(1)" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95">
+          <i class="fa-solid fa-chevron-right text-xs"></i>
+        </button>
+        <button onclick="goToToday()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition active:scale-95">
+          今日
+        </button>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <button onclick="openMealModal()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs active:scale-95">
+          <i class="fa-solid fa-plus text-xs"></i>
+          <span class="hidden sm:inline">食事を記録</span>
+          <span class="sm:hidden">記録</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 3-Column Top Macro & Water Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+      
+      <!-- Calorie Target Progress Card -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs flex flex-col justify-between">
         <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-bold text-slate-400 uppercase">摂取カロリー</span>
+          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">摂取カロリー</span>
           <span id="stat-calorie-status" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700">目標内</span>
         </div>
         <div class="flex items-baseline gap-2 mb-2">
-          <span id="stat-total-calories" class="text-3xl font-extrabold text-slate-900">0</span>
-          <span class="text-xs text-slate-400">/ <span id="stat-target-calories">2000</span> kcal</span>
+          <span id="stat-total-calories" class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">0</span>
+          <span class="text-xs sm:text-sm font-semibold text-slate-400">/ <span id="stat-target-calories">2000</span> kcal</span>
         </div>
         <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden mb-2">
-          <div id="stat-calorie-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+          <div id="stat-calorie-bar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500 rounded-full" style="width: 0%"></div>
         </div>
-        <div class="text-[11px] text-slate-500 flex justify-between">
+        <div class="flex justify-between text-[11px] font-medium text-slate-500">
           <span>残り: <strong id="stat-remaining-calories" class="text-slate-800">2000</strong> kcal</span>
           <span id="stat-calorie-percent" class="font-bold">0%</span>
         </div>
       </div>
 
-      <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-2">
-        <span class="text-xs font-bold text-slate-400 uppercase block">PFC バランス (現在 / 目標)</span>
-        <div>
-          <div class="flex justify-between text-xs font-bold text-rose-600 mb-0.5"><span>たんぱく質 (P)</span><span><span id="stat-p-val">0</span>g / <span id="stat-p-target">110</span>g</span></div>
-          <div class="w-full bg-slate-100 rounded-full h-1.5"><div id="stat-p-bar" class="h-full bg-rose-500 rounded-full" style="width: 0%"></div></div>
+      <!-- PFC Macronutrient Ratio Card -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">PFC マクロバランス</span>
+          <span class="text-[11px] text-slate-400">現在 / 目標</span>
         </div>
-        <div>
-          <div class="flex justify-between text-xs font-bold text-amber-600 mb-0.5"><span>脂質 (F)</span><span><span id="stat-f-val">0</span>g / <span id="stat-f-target">50</span>g</span></div>
-          <div class="w-full bg-slate-100 rounded-full h-1.5"><div id="stat-f-bar" class="h-full bg-amber-500 rounded-full" style="width: 0%"></div></div>
+
+        <div class="space-y-2 mb-2">
+          <!-- Protein -->
+          <div>
+            <div class="flex justify-between text-xs font-bold mb-0.5">
+              <span class="text-rose-600 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span>タンパク質 (P)</span>
+              <span class="text-slate-700"><span id="stat-p-val">0</span>g / <span id="stat-p-target">100</span>g</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+              <div id="stat-p-bar" class="h-full bg-rose-500 transition-all rounded-full" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Fat -->
+          <div>
+            <div class="flex justify-between text-xs font-bold mb-0.5">
+              <span class="text-amber-600 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span>脂質 (F)</span>
+              <span class="text-slate-700"><span id="stat-f-val">0</span>g / <span id="stat-f-target">55</span>g</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+              <div id="stat-f-bar" class="h-full bg-amber-500 transition-all rounded-full" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Carbs -->
+          <div>
+            <div class="flex justify-between text-xs font-bold mb-0.5">
+              <span class="text-sky-600 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-sky-500"></span>炭水化物 (C)</span>
+              <span class="text-slate-700"><span id="stat-c-val">0</span>g / <span id="stat-c-target">275</span>g</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+              <div id="stat-c-bar" class="h-full bg-sky-500 transition-all rounded-full" style="width: 0%"></div>
+            </div>
+          </div>
         </div>
-        <div>
-          <div class="flex justify-between text-xs font-bold text-sky-600 mb-0.5"><span>炭水化物 (C)</span><span><span id="stat-c-val">0</span>g / <span id="stat-c-target">275</span>g</span></div>
-          <div class="w-full bg-slate-100 rounded-full h-1.5"><div id="stat-c-bar" class="h-full bg-sky-500 rounded-full" style="width: 0%"></div></div>
+
+        <div class="text-[10px] text-slate-400 flex items-center justify-between">
+          <span>PFC比率 (カロリー換算)</span>
+          <span id="stat-pfc-ratio-text" class="font-bold text-slate-600">P 0% : F 0% : C 0%</span>
         </div>
       </div>
 
-      <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col justify-between">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-slate-400 uppercase">水分摂取量</span>
+      <!-- Water Hydration Card -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">水分摂取量</span>
           <div class="flex gap-1">
-            <button onclick="addWater(200)" class="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold">+200ml</button>
-            <button onclick="addWater(500)" class="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold">+500ml</button>
+            <button onclick="addWater(200)" class="px-2 py-0.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold transition active:scale-95">+200ml</button>
+            <button onclick="addWater(500)" class="px-2 py-0.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold transition active:scale-95">+500ml</button>
+            <button onclick="resetWater()" class="px-1.5 py-0.5 text-slate-400 hover:text-slate-600 text-xs rounded-lg transition" title="リセット"><i class="fa-solid fa-rotate-left"></i></button>
           </div>
         </div>
-        <div class="flex items-baseline gap-2 my-2">
-          <span id="stat-water-val" class="text-3xl font-extrabold text-blue-600">0</span>
-          <span class="text-xs text-slate-400">/ 2000 ml</span>
+        <div class="flex items-baseline gap-2 mb-2">
+          <span id="stat-water-val" class="text-3xl sm:text-4xl font-extrabold text-blue-600 tracking-tight">0</span>
+          <span class="text-xs sm:text-sm font-semibold text-slate-400">/ 2000 ml</span>
         </div>
-        <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden"><div id="stat-water-bar" class="h-full bg-blue-500 rounded-full" style="width: 0%"></div></div>
+        <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden mb-3">
+          <div id="stat-water-bar" class="h-full bg-gradient-to-r from-blue-400 to-sky-500 transition-all rounded-full" style="width: 0%"></div>
+        </div>
+        <div>
+          <span class="text-[11px] font-bold text-slate-400 block mb-1.5">定番食材ワンタップ追加:</span>
+          <div class="flex flex-wrap gap-1.5">
+            <button onclick="quickAddPreset('白米 (150g)', 252, 3.8, 0.5, 55.7)" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[11px] font-medium text-slate-700 transition active:scale-95">🍚 ご飯150g</button>
+            <button onclick="quickAddPreset('ゆで卵 (1個)', 76, 6.5, 5.0, 0.2)" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[11px] font-medium text-slate-700 transition active:scale-95">🥚 ゆで卵</button>
+            <button onclick="quickAddPreset('サラダチキン (110g)', 125, 25.0, 1.5, 0.5)" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[11px] font-medium text-slate-700 transition active:scale-95">🍗 チキン</button>
+            <button onclick="quickAddPreset('プロテイン1杯', 120, 24.0, 1.8, 2.5)" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[11px] font-medium text-slate-700 transition active:scale-95">🥛 プロテイン</button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- 食事リスト -->
-    <div class="space-y-3">
-      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-        <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span><h3 class="font-bold text-sm">朝食</h3><span id="badge-breakfast-subtotal" class="text-xs text-slate-500 font-semibold">(0 kcal)</span></div>
-          <button onclick="openMealModal('breakfast')" class="text-xs font-bold text-emerald-600"><i class="fa-solid fa-plus"></i> 追加</button>
+    <!-- AI Dietitian Section -->
+    <div class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-4 sm:p-6 text-white shadow-md relative overflow-hidden">
+      <div class="absolute -top-12 -right-12 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-12 -left-12 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+      
+      <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="space-y-1.5">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider flex items-center gap-1">
+              <i class="fa-solid fa-sparkles text-[10px]"></i> Gemini AI + TTS
+            </span>
+            <span class="text-xs text-slate-400">AI専属管理栄養士</span>
+          </div>
+          <h2 class="text-base sm:text-lg font-extrabold text-white flex items-center gap-2">
+            <span>本日の栄養バランス総合診断 & 音声アドバイス</span>
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-300 line-clamp-2 leading-relaxed">
+            本日の食事内容、PFCバランス、水分摂取量、体重・体脂肪率をGeminiが総合分析し、実践的な健康アドバイスをお伝えします。
+          </p>
         </div>
-        <div id="meal-list-breakfast" class="divide-y divide-slate-100 p-2"><div class="text-center py-4 text-xs text-slate-400">記録なし</div></div>
+
+        <div class="flex flex-wrap items-center gap-2 shrink-0">
+          <button id="btn-generate-review" onclick="generateDietitianReview()" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm active:scale-95">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>診断を生成</span>
+          </button>
+          <button id="btn-play-voice" onclick="playDietitianAudio()" class="hidden px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition items-center gap-2 shadow-sm active:scale-95">
+            <i class="fa-solid fa-volume-high"></i>
+            <span>音声で聴く</span>
+          </button>
+        </div>
       </div>
 
-      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-        <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><h3 class="font-bold text-sm">昼食</h3><span id="badge-lunch-subtotal" class="text-xs text-slate-500 font-semibold">(0 kcal)</span></div>
-          <button onclick="openMealModal('lunch')" class="text-xs font-bold text-emerald-600"><i class="fa-solid fa-plus"></i> 追加</button>
+      <!-- Result Card -->
+      <div id="dietitian-result-box" class="hidden mt-4 pt-4 border-t border-slate-800/80">
+        <div class="bg-white/5 backdrop-blur-md rounded-2xl p-4 border border-white/10 space-y-2">
+          <div class="flex items-center justify-between text-xs text-slate-400">
+            <span class="font-bold text-emerald-400 flex items-center gap-1.5"><i class="fa-solid fa-user-doctor"></i> 管理栄養士の講評</span>
+            <span id="dietitian-timestamp" class="text-[10px]"></span>
+          </div>
+          <div id="dietitian-full-text" class="text-xs sm:text-sm text-slate-200 leading-relaxed whitespace-pre-wrap"></div>
         </div>
-        <div id="meal-list-lunch" class="divide-y divide-slate-100 p-2"><div class="text-center py-4 text-xs text-slate-400">記録なし</div></div>
+      </div>
+    </div>
+
+    <!-- Meals Breakdown -->
+    <div class="space-y-4">
+      <!-- Breakfast -->
+      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+        <div class="px-4 py-3 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+            <h3 class="font-extrabold text-sm text-slate-800">朝食</h3>
+            <span id="badge-breakfast-subtotal" class="text-xs text-slate-500 font-semibold">(0 kcal)</span>
+          </div>
+          <button onclick="openMealModal('breakfast')" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 active:scale-95">
+            <i class="fa-solid fa-plus text-xs"></i> 追加
+          </button>
+        </div>
+        <div id="meal-list-breakfast" class="divide-y divide-slate-100 p-2">
+          <div class="text-center py-6 text-xs text-slate-400">朝食の記録はありません</div>
+        </div>
       </div>
 
+      <!-- Lunch -->
       <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-        <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span><h3 class="font-bold text-sm">夕食</h3><span id="badge-dinner-subtotal" class="text-xs text-slate-500 font-semibold">(0 kcal)</span></div>
-          <button onclick="openMealModal('dinner')" class="text-xs font-bold text-emerald-600"><i class="fa-solid fa-plus"></i> 追加</button>
+        <div class="px-4 py-3 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            <h3 class="font-extrabold text-sm text-slate-800">昼食</h3>
+            <span id="badge-lunch-subtotal" class="text-xs text-slate-500 font-semibold">(0 kcal)</span>
+          </div>
+          <button onclick="openMealModal('lunch')" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 active:scale-95">
+            <i class="fa-solid fa-plus text-xs"></i> 追加
+          </button>
         </div>
-        <div id="meal-list-dinner" class="divide-y divide-slate-100 p-2"><div class="text-center py-4 text-xs text-slate-400">記録なし</div></div>
+        <div id="meal-list-lunch" class="divide-y divide-slate-100 p-2">
+          <div class="text-center py-6 text-xs text-slate-400">昼食の記録はありません</div>
+        </div>
       </div>
 
+      <!-- Dinner -->
       <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-        <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span><h3 class="font-bold text-sm">間食</h3><span id="badge-snack-subtotal" class="text-xs text-slate-500 font-semibold">(0 kcal)</span></div>
-          <button onclick="openMealModal('snack')" class="text-xs font-bold text-emerald-600"><i class="fa-solid fa-plus"></i> 追加</button>
+        <div class="px-4 py-3 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+            <h3 class="font-extrabold text-sm text-slate-800">夕食</h3>
+            <span id="badge-dinner-subtotal" class="text-xs text-slate-500 font-semibold">(0 kcal)</span>
+          </div>
+          <button onclick="openMealModal('dinner')" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 active:scale-95">
+            <i class="fa-solid fa-plus text-xs"></i> 追加
+          </button>
         </div>
-        <div id="meal-list-snack" class="divide-y divide-slate-100 p-2"><div class="text-center py-4 text-xs text-slate-400">記録なし</div></div>
+        <div id="meal-list-dinner" class="divide-y divide-slate-100 p-2">
+          <div class="text-center py-6 text-xs text-slate-400">夕食の記録はありません</div>
+        </div>
+      </div>
+
+      <!-- Snack -->
+      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+        <div class="px-4 py-3 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span>
+            <h3 class="font-extrabold text-sm text-slate-800">間食・サプリ</h3>
+            <span id="badge-snack-subtotal" class="text-xs text-slate-500 font-semibold">(0 kcal)</span>
+          </div>
+          <button onclick="openMealModal('snack')" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 active:scale-95">
+            <i class="fa-solid fa-plus text-xs"></i> 追加
+          </button>
+        </div>
+        <div id="meal-list-snack" class="divide-y divide-slate-100 p-2">
+          <div class="text-center py-6 text-xs text-slate-400">間食の記録はありません</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weight & Weekly Chart -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Weight, Body Fat & BMI Card -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs flex flex-col justify-between space-y-4">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+              <i class="fa-solid fa-weight-scale text-indigo-600"></i>
+              <span>体重・体脂肪率 & コンディション</span>
+            </h3>
+            <div class="flex items-center gap-1.5">
+              <input type="file" id="body-scan-file-input" accept="image/*" class="hidden" onchange="handleBodyScreenshotUpload(event)">
+              <button type="button" id="btn-body-screenshot-scan" onclick="triggerBodyScreenshotScan()" class="px-2.5 py-1 bg-gradient-to-r from-indigo-50 to-violet-50 hover:from-indigo-100 hover:to-violet-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition flex items-center gap-1 active:scale-95 shadow-2xs">
+                <i class="fa-solid fa-camera text-[11px]"></i>
+                <span>スクショ読取</span>
+              </button>
+              <span id="body-status-badge" class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-600">未記録</span>
+            </div>
+          </div>
+
+          <div id="body-scan-status-banner" class="hidden mb-3 p-2.5 rounded-xl text-xs border transition-all"></div>
+
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-xs font-bold text-slate-700">体重 (kg)</label>
+                <span id="weight-save-indicator" class="text-[10px] text-emerald-600 font-bold hidden">✓保存済</span>
+              </div>
+              <div class="relative">
+                <input type="number" step="0.1" inputmode="decimal" id="daily-weight-input" oninput="handleWeightInput(this.value)" placeholder="例: 65.4" class="w-full px-3 py-2 text-sm font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-8">
+                <span class="absolute right-2.5 top-2.5 text-xs font-bold text-slate-400">kg</span>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-xs font-bold text-slate-700">体脂肪率 (%)</label>
+                <span id="bodyfat-save-indicator" class="text-[10px] text-emerald-600 font-bold hidden">✓保存済</span>
+              </div>
+              <div class="relative">
+                <input type="number" step="0.1" inputmode="decimal" id="daily-bodyfat-input" oninput="handleBodyFatInput(this.value)" placeholder="例: 17.5" class="w-full px-3 py-2 text-sm font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-7">
+                <span class="absolute right-2.5 top-2.5 text-xs font-bold text-slate-400">%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs mb-3">
+            <div>
+              <span class="text-[11px] text-slate-400 block font-medium">推定BMI</span>
+              <span id="stat-bmi-val" class="text-sm font-extrabold text-slate-800">--</span>
+            </div>
+            <div>
+              <span class="text-[11px] text-slate-400 block font-medium">除脂肪体重 (LBM)</span>
+              <span id="stat-lbm-val" class="text-sm font-extrabold text-slate-800">-- kg</span>
+            </div>
+            <div class="text-right">
+              <span class="text-[11px] text-slate-400 block font-medium">判定</span>
+              <span id="stat-bmi-label" class="text-xs font-bold text-slate-600">設定の身長から算出</span>
+            </div>
+          </div>
+
+          <div class="flex justify-end">
+            <button type="button" onclick="confirmManualSaveBodyMetrics()" class="px-4 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95">
+              <i class="fa-solid fa-floppy-disk text-xs"></i>
+              <span>体重・体脂肪を記録保存</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">体調メモ・運動・睡眠</label>
+          <textarea id="daily-note-input" oninput="handleNoteInput(this.value)" rows="3" placeholder="脚トレ45分、水分多めに摂取、睡眠7時間快適 など" class="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none resize-none"></textarea>
+        </div>
+      </div>
+
+      <!-- Weekly Trend Chart -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+            <i class="fa-solid fa-chart-line text-emerald-600"></i>
+            <span>直近7日間のカロリー推移</span>
+          </h3>
+          <span class="text-[11px] text-slate-400">赤線: 目標カロリー</span>
+        </div>
+        <div class="h-48 w-full relative">
+          <canvas id="weeklyChart"></canvas>
+        </div>
       </div>
     </div>
   </main>
 
-  <!-- 食事モーダル -->
-  <div id="meal-modal" class="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-3 hidden">
-    <div class="bg-white w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-3">
-      <div class="flex items-center justify-between border-b pb-2">
-        <h3 class="font-bold text-base">食事を記録</h3>
-        <button onclick="closeMealModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+  <!-- Mobile Bottom Nav -->
+  <nav class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 md:hidden pb-safe shadow-lg">
+    <div class="grid grid-cols-5 h-16 items-center px-1">
+      <button onclick="goToToday()" class="flex flex-col items-center justify-center text-slate-600 hover:text-emerald-600 transition">
+        <i class="fa-solid fa-calendar-day text-base"></i>
+        <span class="text-[10px] font-bold mt-1">今日</span>
+      </button>
+
+      <button onclick="openSmartLogModal()" class="flex flex-col items-center justify-center text-indigo-600 hover:text-indigo-700 transition">
+        <i class="fa-solid fa-wand-magic-sparkles text-base"></i>
+        <span class="text-[10px] font-bold mt-1">AI一括</span>
+      </button>
+
+      <div class="flex justify-center items-center">
+        <button onclick="openMealModal()" class="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg flex items-center justify-center text-xl active:scale-95 transition -translate-y-2">
+          <i class="fa-solid fa-plus"></i>
+        </button>
       </div>
-      <form onsubmit="saveMealForm(event)" class="space-y-3">
-        <input type="hidden" id="meal-category-val" value="lunch">
-        <div class="grid grid-cols-4 gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600">
-          <button type="button" onclick="selectMealFormCat('breakfast')" id="cat-btn-breakfast" class="py-1 rounded-lg">朝食</button>
-          <button type="button" onclick="selectMealFormCat('lunch')" id="cat-btn-lunch" class="py-1 rounded-lg">昼食</button>
-          <button type="button" onclick="selectMealFormCat('dinner')" id="cat-btn-dinner" class="py-1 rounded-lg">夕食</button>
-          <button type="button" onclick="selectMealFormCat('snack')" id="cat-btn-snack" class="py-1 rounded-lg">間食</button>
-        </div>
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <label class="block text-xs font-bold text-slate-600">料理・食品名</label>
-            <button type="button" onclick="triggerAiAutoEstimate()" class="text-xs font-bold text-indigo-600 flex items-center gap-1"><i class="fa-solid fa-wand-magic-sparkles"></i> AI自動入力</button>
+
+      <button onclick="openPhotoModal()" class="flex flex-col items-center justify-center text-emerald-600 hover:text-emerald-700 transition">
+        <i class="fa-solid fa-camera text-base"></i>
+        <span class="text-[10px] font-bold mt-1">写真/JAN</span>
+      </button>
+
+      <button onclick="openSuggestModal()" class="flex flex-col items-center justify-center text-amber-600 hover:text-amber-700 transition">
+        <i class="fa-solid fa-lightbulb text-base"></i>
+        <span class="text-[10px] font-bold mt-1">献立提案</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Modals -->
+  <!-- 1. SmartLog Modal -->
+  <div id="smartlog-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden modal-mobile-top">
+    <div class="bg-white w-full sm:max-w-lg rounded-2xl p-4 sm:p-5 shadow-2xl modal-keyboard-container modal-mobile-card flex flex-col transition-all">
+      <div class="flex items-center justify-between pb-2.5 border-b border-slate-100 shrink-0">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
           </div>
-          <input type="text" id="meal-name-input" required placeholder="例: そば、豚汁定食" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-          <div id="ai-estimate-hint" class="hidden text-xs text-slate-500 mt-1"></div>
+          <h3 class="font-extrabold text-sm sm:text-base text-slate-800">一括AI自然言語入力</h3>
         </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">エネルギー (kcal)</label>
-          <input type="number" step="1" id="meal-cal-input" required placeholder="450" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none">
+        <button onclick="closeSmartLogModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg active:scale-95">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="py-2.5 space-y-3 overflow-y-auto flex-1 pr-1 overscroll-contain">
+        <p class="text-xs text-slate-500 leading-relaxed">
+          今日食べたものを自由に入力してください。Geminiが朝・昼・夕・間食を自動分類し、カロリー・PFCを推定して一括登録します。
+        </p>
+        <textarea id="smartlog-input" rows="4" placeholder="例: 朝はトースト1枚とゆで卵2個、ホットコーヒー。昼はセブンで鮭おにぎりとサラダチキン。夕方は吉野家の牛丼並盛を食べた。" class="w-full p-3 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"></textarea>
+
+        <div class="flex flex-wrap gap-1.5">
+          <span class="text-[10px] text-slate-400 font-bold self-center">例文:</span>
+          <button onclick="fillSmartLogSample(1)" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-[10px] text-slate-600">コンビニ高タンパク飯</button>
+          <button onclick="fillSmartLogSample(2)" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-[10px] text-slate-600">定食屋ランチ</button>
         </div>
-        <div class="grid grid-cols-3 gap-2">
-          <div><label class="block text-xs font-bold text-rose-600 mb-1">P (g)</label><input type="number" step="0.1" id="meal-p-input" class="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl"></div>
-          <div><label class="block text-xs font-bold text-amber-600 mb-1">F (g)</label><input type="number" step="0.1" id="meal-f-input" class="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl"></div>
-          <div><label class="block text-xs font-bold text-sky-600 mb-1">C (g)</label><input type="number" step="0.1" id="meal-c-input" class="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl"></div>
+
+        <div id="smartlog-preview-container" class="hidden space-y-2 pt-2 border-t border-slate-100">
+          <span class="text-xs font-bold text-slate-700 flex items-center gap-1">
+            <i class="fa-solid fa-list-check text-indigo-600"></i> 解析された品目プレビュー:
+          </span>
+          <div id="smartlog-items-list" class="space-y-1.5 max-h-44 overflow-y-auto pr-1"></div>
         </div>
-        <div class="pt-2 flex justify-end gap-2">
-          <button type="button" onclick="closeMealModal()" class="px-4 py-2 text-xs font-bold text-slate-500">キャンセル</button>
-          <button type="submit" class="px-5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold">保存</button>
+      </div>
+
+      <div class="pt-2.5 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0 bg-white">
+        <button onclick="closeSmartLogModal()" class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700">キャンセル</button>
+        <button id="btn-smartlog-parse" onclick="parseSmartLogText()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95">
+          <i class="fa-solid fa-sparkles text-xs"></i>
+          <span>AI解析する</span>
+        </button>
+        <button id="btn-smartlog-apply" onclick="applySmartLogItems()" class="hidden px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95">
+          <i class="fa-solid fa-check text-xs"></i>
+          <span>この内容で記録する</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Meal Form Modal -->
+  <div id="meal-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden modal-mobile-top">
+    <div class="bg-white w-full sm:max-w-md rounded-2xl p-4 sm:p-5 shadow-2xl modal-keyboard-container modal-mobile-card flex flex-col transition-all">
+      <div class="flex items-center justify-between pb-2.5 border-b border-slate-100 shrink-0">
+        <h3 id="meal-modal-title" class="font-extrabold text-base text-slate-800">食事を記録</h3>
+        <button onclick="closeMealModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg active:scale-95">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form onsubmit="saveMealForm(event)" class="flex flex-col flex-1 overflow-hidden min-h-0">
+        <div class="py-2.5 space-y-3 overflow-y-auto flex-1 pr-1 overscroll-contain">
+          <input type="hidden" id="meal-edit-id">
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">食事の分類</label>
+            <div class="grid grid-cols-4 gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600">
+              <button type="button" onclick="selectMealFormCat('breakfast')" id="cat-btn-breakfast" class="py-1.5 rounded-lg transition">朝食</button>
+              <button type="button" onclick="selectMealFormCat('lunch')" id="cat-btn-lunch" class="py-1.5 rounded-lg transition">昼食</button>
+              <button type="button" onclick="selectMealFormCat('dinner')" id="cat-btn-dinner" class="py-1.5 rounded-lg transition">夕食</button>
+              <button type="button" onclick="selectMealFormCat('snack')" id="cat-btn-snack" class="py-1.5 rounded-lg transition">間食</button>
+            </div>
+            <input type="hidden" id="meal-category-val" value="lunch">
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-bold text-slate-600">料理・食品名</label>
+              <button type="button" onclick="triggerAiAutoEstimate()" class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 active:scale-95">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                <span>AI自動入力</span>
+              </button>
+            </div>
+            <input type="text" id="meal-name-input" required placeholder="例: 豚の生姜焼き定食、プロテインバー" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none" onkeydown="handleNameInputKeydown(event)">
+            <span id="ai-estimate-hint" class="hidden text-[10px] text-slate-400 mt-1 block"></span>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">エネルギー (kcal)</label>
+            <input type="number" step="1" inputmode="numeric" id="meal-cal-input" required placeholder="例: 450" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block text-xs font-bold text-rose-600 mb-1">たんぱく質 (g)</label>
+              <input type="number" step="0.1" inputmode="decimal" id="meal-p-input" placeholder="0" class="w-full px-2.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-amber-600 mb-1">脂質 (g)</label>
+              <input type="number" step="0.1" inputmode="decimal" id="meal-f-input" placeholder="0" class="w-full px-2.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-sky-600 mb-1">炭水化物 (g)</label>
+              <input type="number" step="0.1" inputmode="decimal" id="meal-c-input" placeholder="0" class="w-full px-2.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-none">
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-2.5 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0 bg-white">
+          <button type="button" onclick="closeMealModal()" class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 active:scale-95">キャンセル</button>
+          <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm active:scale-95">保存</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- 設定モーダル -->
-  <div id="settings-modal" class="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-3 hidden">
-    <div class="bg-white w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-3">
-      <div class="flex items-center justify-between border-b pb-2">
-        <h3 class="font-bold text-base">設定</h3>
-        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+  <!-- 3. Photo Modal -->
+  <div id="photo-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden modal-mobile-top">
+    <div class="bg-white w-full sm:max-w-md rounded-2xl p-4 sm:p-5 shadow-2xl modal-keyboard-container modal-mobile-card flex flex-col transition-all">
+      <div class="flex items-center justify-between pb-2.5 border-b border-slate-100 shrink-0">
+        <h3 class="font-extrabold text-base text-slate-800 flex items-center gap-1.5">
+          <i class="fa-solid fa-camera text-emerald-600"></i>
+          <span>写真 / JANバーコード解析</span>
+        </h3>
+        <button onclick="closePhotoModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg active:scale-95">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
       </div>
-      <form onsubmit="saveTargetSettings(event)" class="space-y-3">
-        <div class="p-3 bg-indigo-50 border border-indigo-200 rounded-xl space-y-1">
-          <label class="block text-xs font-bold text-indigo-900 flex items-center gap-1"><i class="fa-solid fa-key"></i> Gemini APIキー</label>
-          <input type="text" id="set-api-key" placeholder="AQ.A... または AIza..." class="w-full px-3 py-2 text-xs bg-white border border-indigo-200 rounded-xl focus:outline-none">
-          <p class="text-[10px] text-indigo-600">※このブラウザ内にのみ保存されます。</p>
+
+      <div class="py-2.5 space-y-3 overflow-y-auto flex-1 pr-1 overscroll-contain">
+        <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600">
+          <button type="button" onclick="setPhotoMode('meal')" id="tab-photo-meal" class="py-1.5 rounded-lg bg-white text-emerald-700 shadow-xs">料理・お皿</button>
+          <button type="button" onclick="setPhotoMode('label')" id="tab-photo-label" class="py-1.5 rounded-lg hover:text-slate-900">栄養成分表示</button>
+          <button type="button" onclick="setPhotoMode('barcode')" id="tab-photo-barcode" class="py-1.5 rounded-lg hover:text-slate-900">JANバーコード</button>
         </div>
+        <p id="photo-mode-hint" class="text-[11px] text-slate-500 leading-snug">食卓や料理全体の写真を撮影または選択してください</p>
+
+        <div class="relative border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-2xl p-4 text-center transition bg-slate-50">
+          <input type="file" accept="image/*" id="photo-file-input" onchange="handleImageSelected(event)" class="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10">
+          <div id="photo-placeholder-box" class="space-y-2 py-4">
+            <div class="w-12 h-12 mx-auto rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl"><i class="fa-solid fa-camera"></i></div>
+            <div class="text-xs font-bold text-slate-700">タップして写真撮影またはアルバムから選択</div>
+          </div>
+          <div id="photo-preview-box" class="hidden space-y-2">
+            <img id="photo-preview-img" class="max-h-48 mx-auto rounded-xl shadow-xs object-cover" alt="プレビュー">
+            <span class="text-[10px] text-slate-400 block">タップして画像を変更</span>
+          </div>
+        </div>
+
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">目標カロリー (kcal)</label>
-          <input type="number" step="10" id="set-target-cal" required class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl">
+          <label class="block text-xs font-bold text-slate-600 mb-1">追加先の食事</label>
+          <select id="photo-target-category" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none">
+            <option value="breakfast">朝食</option>
+            <option value="lunch" selected>昼食</option>
+            <option value="dinner">夕食</option>
+            <option value="snack">間食・サプリ</option>
+          </select>
         </div>
-        <div class="grid grid-cols-3 gap-2">
-          <div><label class="block text-xs font-bold text-rose-600 mb-1">目標 P(g)</label><input type="number" step="1" id="set-target-p" required class="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl"></div>
-          <div><label class="block text-xs font-bold text-amber-600 mb-1">目標 F(g)</label><input type="number" step="1" id="set-target-f" required class="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl"></div>
-          <div><label class="block text-xs font-bold text-sky-600 mb-1">目標 C(g)</label><input type="number" step="1" id="set-target-c" required class="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl"></div>
+
+        <div id="photo-result-container" class="hidden space-y-2 pt-2 border-t border-slate-100">
+          <span class="text-xs font-bold text-slate-700 flex items-center gap-1">
+            <i class="fa-solid fa-list-check text-emerald-600"></i> 検出された品目:
+          </span>
+          <div id="photo-items-list" class="space-y-1.5 max-h-40 overflow-y-auto pr-1"></div>
         </div>
-        <div class="pt-2 flex justify-end gap-2">
-          <button type="button" onclick="closeSettingsModal()" class="px-4 py-2 text-xs font-bold text-slate-500">キャンセル</button>
-          <button type="submit" class="px-5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold">保存</button>
+      </div>
+
+      <div class="pt-2.5 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0 bg-white">
+        <button onclick="closePhotoModal()" class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700">閉じる</button>
+        <button id="btn-photo-analyze" onclick="analyzeSelectedPhoto()" disabled class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95">
+          <i class="fa-solid fa-sparkles text-xs"></i>
+          <span>画像を解析</span>
+        </button>
+        <button id="btn-photo-apply" onclick="applyPhotoItems()" class="hidden px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95">
+          <i class="fa-solid fa-check text-xs"></i>
+          <span>食事に記録</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Google Search Modal -->
+  <div id="search-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden modal-mobile-top">
+    <div class="bg-white w-full sm:max-w-lg rounded-2xl p-4 sm:p-5 shadow-2xl modal-keyboard-container modal-mobile-card flex flex-col transition-all">
+      <div class="flex items-center justify-between pb-2.5 border-b border-slate-100 shrink-0">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-sky-100 text-sky-600 flex items-center justify-center text-xs">
+            <i class="fa-brands fa-google"></i>
+          </div>
+          <h3 class="font-extrabold text-sm sm:text-base text-slate-800">Google検索連動 AI外食リサーチ</h3>
+        </div>
+        <button onclick="closeSearchModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg active:scale-95">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="py-2.5 space-y-3 overflow-y-auto flex-1 pr-1 overscroll-contain">
+        <p class="text-xs text-slate-500 leading-relaxed">
+          最新のコンビニ新商品やチェーン店（セブン、すき家、スタバなど）の正確な公式栄養数値をリアルタイムGoogle検索でリサーチします。
+        </p>
+
+        <div class="flex gap-2">
+          <input type="text" id="search-query-input" placeholder="例: セブンの蒙古タンメン中本、吉野家 牛丼並盛 カロリー" class="flex-1 px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-sky-500 focus:outline-none" onkeydown="if(event.key==='Enter') executeGroundedSearch()">
+          <button onclick="executeGroundedSearch()" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 active:scale-95 shrink-0">
+            <i class="fa-solid fa-magnifying-glass"></i> 検索
+          </button>
+        </div>
+
+        <div class="flex flex-wrap gap-1.5">
+          <span class="text-[10px] text-slate-400 font-bold self-center">例:</span>
+          <button onclick="fillSearchQuery('セブンイレブン 鶏団子鍋 カロリー PFC')" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-[10px] text-slate-600">セブン 鶏団子鍋</button>
+          <button onclick="fillSearchQuery('吉野家 牛丼並盛 カロリー PFC')" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-[10px] text-slate-600">吉野家 牛丼並盛</button>
+        </div>
+
+        <div id="search-response-box" class="hidden space-y-2 pt-2 border-t border-slate-100">
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+            <div id="search-response-text" class="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap"></div>
+          </div>
+          <div id="search-log-candidate" class="hidden p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+            <div>
+              <strong id="search-candidate-name" class="text-xs font-bold text-slate-800 block"></strong>
+              <span id="search-candidate-macros" class="text-[11px] text-emerald-700 font-semibold"></span>
+            </div>
+            <button onclick="logCandidateFromSearch()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition active:scale-95">
+              この内容で記録
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-2.5 border-t border-slate-100 flex items-center justify-end shrink-0 bg-white">
+        <button onclick="closeSearchModal()" class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Suggest Modal -->
+  <div id="suggest-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden modal-mobile-top">
+    <div class="bg-white w-full sm:max-w-lg rounded-2xl p-4 sm:p-5 shadow-2xl modal-keyboard-container modal-mobile-card flex flex-col transition-all">
+      <div class="flex items-center justify-between pb-2.5 border-b border-slate-100 shrink-0">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center text-xs">
+            <i class="fa-solid fa-lightbulb"></i>
+          </div>
+          <h3 class="font-extrabold text-sm sm:text-base text-slate-800">不足栄養素の献立提案</h3>
+        </div>
+        <button onclick="closeSuggestModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg active:scale-95">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="py-2.5 space-y-3 overflow-y-auto flex-1 pr-1 overscroll-contain">
+        <div class="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-1 text-xs">
+          <span class="font-bold text-amber-900 block">本日の残り目標枠:</span>
+          <div class="grid grid-cols-4 gap-1 text-center font-bold">
+            <div class="bg-white p-1.5 rounded-lg text-slate-800"><span id="suggest-gap-cal">0</span><span class="text-[9px] block text-slate-400">kcal</span></div>
+            <div class="bg-white p-1.5 rounded-lg text-rose-600">P <span id="suggest-gap-p">0</span>g</div>
+            <div class="bg-white p-1.5 rounded-lg text-amber-600">F <span id="suggest-gap-f">0</span>g</div>
+            <div class="bg-white p-1.5 rounded-lg text-sky-600">C <span id="suggest-gap-c">0</span>g</div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">要望・シチュエーション（任意）</label>
+          <input type="text" id="suggest-preference-input" placeholder="例: コンビニで買えるもの、簡単に作れる副菜" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none">
+        </div>
+
+        <button onclick="generateMealSuggestions()" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm active:scale-95">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          <span>残りを埋める献立をAI提案</span>
+        </button>
+
+        <div id="suggest-results-list" class="space-y-3 pt-2"></div>
+      </div>
+
+      <div class="pt-2.5 border-t border-slate-100 flex items-center justify-end shrink-0 bg-white">
+        <button onclick="closeSuggestModal()" class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Settings Modal -->
+  <div id="settings-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden modal-mobile-top">
+    <div class="bg-white w-full sm:max-w-md rounded-2xl p-4 sm:p-5 shadow-2xl modal-keyboard-container modal-mobile-card flex flex-col transition-all">
+      <div class="flex items-center justify-between pb-2.5 border-b border-slate-100 shrink-0">
+        <h3 class="font-extrabold text-base text-slate-800 flex items-center gap-1.5">
+          <i class="fa-solid fa-sliders text-emerald-600"></i>
+          <span>目標カロリー・身体・API設定</span>
+        </h3>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg active:scale-95">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form onsubmit="saveTargetSettings(event)" class="flex flex-col flex-1 overflow-hidden min-h-0">
+        <div class="py-2.5 space-y-3 overflow-y-auto flex-1 pr-1 overscroll-contain">
+          <!-- API Key -->
+          <div class="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-1.5">
+            <label class="block text-xs font-extrabold text-indigo-900 flex items-center gap-1">
+              <i class="fa-solid fa-key text-indigo-600"></i> Gemini APIキー
+            </label>
+            <input type="text" id="set-api-key" placeholder="AQ.A... または AIza..." class="w-full px-3 py-2 text-xs bg-white border border-indigo-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            <p class="text-[10px] text-indigo-600 leading-tight">※ブラウザ内に安全に保存され、外部に公開されません。</p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">身長 (cm)</label>
+            <input type="number" step="0.5" inputmode="decimal" id="set-target-height" placeholder="例: 170" required class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">1日の目標カロリー (kcal)</label>
+            <input type="number" step="10" inputmode="numeric" id="set-target-cal" required class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block text-xs font-bold text-rose-600 mb-1">目標 P (g)</label>
+              <input type="number" step="1" inputmode="numeric" id="set-target-p" required class="w-full px-2.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-amber-600 mb-1">目標 F (g)</label>
+              <input type="number" step="1" inputmode="numeric" id="set-target-f" required class="w-full px-2.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-sky-600 mb-1">目標 C (g)</label>
+              <input type="number" step="1" inputmode="numeric" id="set-target-c" required class="w-full px-2.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl">
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-2.5 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0 bg-white">
+          <button type="button" onclick="closeSettingsModal()" class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 active:scale-95">キャンセル</button>
+          <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm active:scale-95">設定を保存</button>
         </div>
       </form>
     </div>
   </div>
 
   <div id="toast" class="fixed top-4 right-4 z-50 transform translate-y-[-100%] opacity-0 transition-all duration-300 pointer-events-none">
-    <div class="bg-slate-900 text-white px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-bold">
+    <div class="bg-slate-900/90 text-white backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-bold border border-white/10">
+      <i id="toast-icon" class="fa-solid fa-check text-emerald-400"></i>
       <span id="toast-msg">保存しました</span>
     </div>
   </div>
 
   <script>
+    const GEMINI_TEXT_MODEL = "gemini-2.5-flash";
+    const GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts";
+
     let currentDate = getTodayString();
-    const defaultSettings = { calories: 2000, p: 110, f: 50, c: 275, apiKey: "" };
+    let chartInstance = null;
+    let currentPhotoBase64 = null;
+    let currentPhotoMode = "meal";
+    let lastAudioBlobUrl = null;
+    let currentAudioElement = null;
+
+    const defaultSettings = {
+      height: 170,
+      calories: 2000,
+      p: 110,
+      f: 50,
+      c: 275,
+      apiKey: ""
+    };
 
     function getTodayString() {
       const now = new Date();
-      return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     }
 
     function getStorageData() {
@@ -244,13 +896,32 @@
       }
     }
 
-    function setStorageData(data) { localStorage.setItem('nutridaily_data', JSON.stringify(data)); }
-    function getApiKey() { return (getStorageData().settings?.apiKey || "").trim(); }
+    function setStorageData(data) {
+      try {
+        localStorage.setItem('nutridaily_data', JSON.stringify(data));
+      } catch (e) {
+        console.error('Storage write error', e);
+      }
+    }
+
+    function getApiKey() {
+      const data = getStorageData();
+      return (data.settings?.apiKey || "").trim();
+    }
 
     function getDayData(dateStr) {
       const data = getStorageData();
       if (!data.days) data.days = {};
-      if (!data.days[dateStr]) data.days[dateStr] = { meals: [], water: 0 };
+      if (!data.days[dateStr]) {
+        data.days[dateStr] = {
+          meals: [],
+          water: 0,
+          weight: '',
+          bodyFat: '',
+          note: '',
+          aiReview: null
+        };
+      }
       return data.days[dateStr];
     }
 
@@ -261,9 +932,77 @@
       setStorageData(data);
     }
 
+    async function fetchWithRetry(url, options, maxRetries = 3) {
+      let delay = 1000;
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          const res = await fetch(url, options);
+          if (res.status === 429 || res.status >= 500) {
+            await new Promise(r => setTimeout(r, delay));
+            delay *= 2;
+            continue;
+          }
+          return res;
+        } catch (err) {
+          if (attempt === maxRetries - 1) throw err;
+          await new Promise(r => setTimeout(r, delay));
+          delay *= 2;
+        }
+      }
+      throw new Error("Request failed after retries");
+    }
+
+    function pcmToWav(pcm16, sampleRate) {
+      const buffer = new ArrayBuffer(44 + pcm16.length * 2);
+      const view = new DataView(buffer);
+      function writeString(offset, string) {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      }
+      writeString(0, 'RIFF');
+      view.setUint32(4, 36 + pcm16.length * 2, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeString(36, 'data');
+      view.setUint32(40, pcm16.length * 2, true);
+      let offset = 44;
+      for (let i = 0; i < pcm16.length; i++) {
+        view.setInt16(offset, pcm16[i], true);
+        offset += 2;
+      }
+      return new Blob([view], { type: 'audio/wav' });
+    }
+
+    function base64ToArrayBuffer(base64) {
+      const binaryString = atob(base64);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return bytes.buffer;
+    }
+
     function updateUI() {
       const day = getDayData(currentDate);
-      const settings = getStorageData().settings || defaultSettings;
+      const data = getStorageData();
+      const settings = data.settings || defaultSettings;
+
+      const apiKeyBanner = document.getElementById('api-key-banner');
+      if (!settings.apiKey) {
+        apiKeyBanner.classList.remove('hidden');
+      } else {
+        apiKeyBanner.classList.add('hidden');
+      }
+
       document.getElementById('date-picker-input').value = currentDate;
 
       let totalCal = 0, totalP = 0, totalF = 0, totalC = 0;
@@ -272,10 +1011,15 @@
 
       (day.meals || []).forEach(meal => {
         const cal = Number(meal.calories) || 0;
+        const p = Number(meal.p) || 0;
+        const f = Number(meal.f) || 0;
+        const c = Number(meal.c) || 0;
+
         totalCal += cal;
-        totalP += (Number(meal.p) || 0);
-        totalF += (Number(meal.f) || 0);
-        totalC += (Number(meal.c) || 0);
+        totalP += p;
+        totalF += f;
+        totalC += c;
+
         if (subTotals[meal.category] !== undefined) {
           subTotals[meal.category] += cal;
           categories[meal.category].push(meal);
@@ -284,10 +1028,26 @@
 
       document.getElementById('stat-total-calories').innerText = Math.round(totalCal);
       document.getElementById('stat-target-calories').innerText = settings.calories;
-      document.getElementById('stat-remaining-calories').innerText = Math.round(settings.calories - totalCal);
+
+      const remainingCal = settings.calories - totalCal;
+      document.getElementById('stat-remaining-calories').innerText = Math.round(remainingCal);
+
       const calPercent = Math.min(100, Math.round((totalCal / settings.calories) * 100));
       document.getElementById('stat-calorie-percent').innerText = `${calPercent}%`;
-      document.getElementById('stat-calorie-bar').style.width = `${calPercent}%`;
+
+      const calBar = document.getElementById('stat-calorie-bar');
+      calBar.style.width = `${calPercent}%`;
+
+      const statusBadge = document.getElementById('stat-calorie-status');
+      if (totalCal > settings.calories) {
+        statusBadge.innerText = `+${Math.round(totalCal - settings.calories)} kcal 超過`;
+        statusBadge.className = "px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800";
+        calBar.className = "h-full bg-gradient-to-r from-rose-500 to-red-600 transition-all duration-500 rounded-full";
+      } else {
+        statusBadge.innerText = "目標内";
+        statusBadge.className = "px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800";
+        calBar.className = "h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500 rounded-full";
+      }
 
       document.getElementById('stat-p-val').innerText = totalP.toFixed(1);
       document.getElementById('stat-p-target').innerText = settings.p;
@@ -301,145 +1061,1254 @@
       document.getElementById('stat-c-target').innerText = settings.c;
       document.getElementById('stat-c-bar').style.width = `${Math.min(100, (totalC / settings.c) * 100)}%`;
 
-      document.getElementById('stat-water-val').innerText = day.water || 0;
-      document.getElementById('stat-water-bar').style.width = `${Math.min(100, ((day.water || 0) / 2000) * 100)}%`;
+      const calFromP = totalP * 4;
+      const calFromF = totalF * 9;
+      const calFromC = totalC * 4;
+      const macroCalTotal = calFromP + calFromF + calFromC;
+      if (macroCalTotal > 0) {
+        const ratioP = Math.round((calFromP / macroCalTotal) * 100);
+        const ratioF = Math.round((calFromF / macroCalTotal) * 100);
+        const ratioC = Math.round((calFromC / macroCalTotal) * 100);
+        document.getElementById('stat-pfc-ratio-text').innerText = `P ${ratioP}% : F ${ratioF}% : C ${ratioC}%`;
+      } else {
+        document.getElementById('stat-pfc-ratio-text').innerText = 'P 0% : F 0% : C 0%';
+      }
 
-      ['breakfast', 'lunch', 'dinner', 'snack'].forEach(cat => {
-        document.getElementById(`badge-${cat}-subtotal`).innerText = `(${Math.round(subTotals[cat])} kcal)`;
-        const listEl = document.getElementById(`meal-list-${cat}`);
-        if (!categories[cat] || categories[cat].length === 0) {
-          listEl.innerHTML = `<div class="text-center py-4 text-xs text-slate-400">記録なし</div>`;
-        } else {
-          listEl.innerHTML = categories[cat].map(m => `
-            <div class="px-3 py-2 flex items-center justify-between hover:bg-slate-50 rounded-xl text-xs">
-              <div><strong class="text-slate-800">${m.name}</strong><span class="text-[10px] text-slate-400 ml-2">${Math.round(m.calories)} kcal (P:${m.p}g F:${m.f}g C:${m.c}g)</span></div>
-              <button onclick="deleteMeal('${m.id}')" class="text-slate-400 hover:text-rose-600 p-1"><i class="fa-solid fa-trash text-xs"></i></button>
+      const waterVal = day.water || 0;
+      document.getElementById('stat-water-val').innerText = waterVal;
+      document.getElementById('stat-water-bar').style.width = `${Math.min(100, (waterVal / 2000) * 100)}%`;
+
+      const weightEl = document.getElementById('daily-weight-input');
+      if (weightEl) weightEl.value = (day.weight !== undefined && day.weight !== null) ? day.weight : '';
+
+      const bodyFatEl = document.getElementById('daily-bodyfat-input');
+      if (bodyFatEl) bodyFatEl.value = (day.bodyFat !== undefined && day.bodyFat !== null) ? day.bodyFat : '';
+
+      const noteEl = document.getElementById('daily-note-input');
+      if (noteEl) noteEl.value = day.note || '';
+
+      updateCalculatedBodyMetrics(day.weight, day.bodyFat, settings.height || 170);
+
+      if (day.aiReview) {
+        document.getElementById('dietitian-result-box').classList.remove('hidden');
+        document.getElementById('dietitian-full-text').innerText = day.aiReview.text;
+        document.getElementById('dietitian-timestamp').innerText = day.aiReview.time;
+        document.getElementById('btn-play-voice').classList.remove('hidden');
+        document.getElementById('btn-play-voice').classList.add('flex');
+      } else {
+        document.getElementById('dietitian-result-box').classList.add('hidden');
+        document.getElementById('btn-play-voice').classList.add('hidden');
+        document.getElementById('btn-play-voice').classList.remove('flex');
+      }
+
+      renderMealCategoryList('breakfast', categories.breakfast, subTotals.breakfast);
+      renderMealCategoryList('lunch', categories.lunch, subTotals.lunch);
+      renderMealCategoryList('dinner', categories.dinner, subTotals.dinner);
+      renderMealCategoryList('snack', categories.snack, subTotals.snack);
+
+      renderWeeklyChart();
+    }
+
+    function updateCalculatedBodyMetrics(weightVal, fatVal, heightCm) {
+      const w = parseFloat(weightVal);
+      const f = parseFloat(fatVal);
+      const hM = (parseFloat(heightCm) || 170) / 100;
+
+      const bmiValEl = document.getElementById('stat-bmi-val');
+      const lbmValEl = document.getElementById('stat-lbm-val');
+      const labelEl = document.getElementById('stat-bmi-label');
+      const badgeEl = document.getElementById('body-status-badge');
+
+      if (!w || w <= 0) {
+        bmiValEl.innerText = '--';
+        lbmValEl.innerText = '-- kg';
+        labelEl.innerText = '体重を入力すると計算';
+        badgeEl.innerText = '未記録';
+        badgeEl.className = 'px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-600';
+        return;
+      }
+
+      const bmi = (w / (hM * hM)).toFixed(1);
+      bmiValEl.innerText = bmi;
+
+      let category = '';
+      let badgeClass = '';
+      if (bmi < 18.5) {
+        category = '低体重 (痩せ型)';
+        badgeClass = 'bg-sky-100 text-sky-800';
+      } else if (bmi < 25) {
+        category = '標準体型 (適正)';
+        badgeClass = 'bg-emerald-100 text-emerald-800';
+      } else if (bmi < 30) {
+        category = '肥満 (1度)';
+        badgeClass = 'bg-amber-100 text-amber-800';
+      } else {
+        category = '肥満 (2度以上)';
+        badgeClass = 'bg-rose-100 text-rose-800';
+      }
+
+      labelEl.innerText = category;
+      badgeEl.innerText = `${w}kg | BMI ${bmi}`;
+      badgeEl.className = `px-2 py-0.5 rounded-md text-[11px] font-bold ${badgeClass}`;
+
+      if (f && f > 0 && f < 100) {
+        const lbm = (w * (1 - f / 100)).toFixed(1);
+        lbmValEl.innerText = `${lbm} kg`;
+      } else {
+        lbmValEl.innerText = '-- kg';
+      }
+    }
+
+    let weightDebounceTimeout = null;
+    function handleWeightInput(val) {
+      const day = getDayData(currentDate);
+      day.weight = val;
+      saveDayData(currentDate, day);
+
+      const indicator = document.getElementById('weight-save-indicator');
+      if (indicator) {
+        indicator.classList.remove('hidden');
+        clearTimeout(weightDebounceTimeout);
+        weightDebounceTimeout = setTimeout(() => { indicator.classList.add('hidden'); }, 1500);
+      }
+
+      const data = getStorageData();
+      updateCalculatedBodyMetrics(val, day.bodyFat, data.settings?.height || 170);
+      renderWeeklyChart();
+    }
+
+    let fatDebounceTimeout = null;
+    function handleBodyFatInput(val) {
+      const day = getDayData(currentDate);
+      day.bodyFat = val;
+      saveDayData(currentDate, day);
+
+      const indicator = document.getElementById('bodyfat-save-indicator');
+      if (indicator) {
+        indicator.classList.remove('hidden');
+        clearTimeout(fatDebounceTimeout);
+        fatDebounceTimeout = setTimeout(() => { indicator.classList.add('hidden'); }, 1500);
+      }
+
+      const data = getStorageData();
+      updateCalculatedBodyMetrics(day.weight, val, data.settings?.height || 170);
+    }
+
+    function handleNoteInput(val) {
+      const day = getDayData(currentDate);
+      day.note = val;
+      saveDayData(currentDate, day);
+    }
+
+    function confirmManualSaveBodyMetrics() {
+      const weightVal = document.getElementById('daily-weight-input').value;
+      const fatVal = document.getElementById('daily-bodyfat-input').value;
+      const noteVal = document.getElementById('daily-note-input').value;
+
+      const day = getDayData(currentDate);
+      day.weight = weightVal;
+      day.bodyFat = fatVal;
+      day.note = noteVal;
+      saveDayData(currentDate, day);
+
+      updateUI();
+      showToast('体重・体脂肪率を保存しました！');
+    }
+
+    function triggerBodyScreenshotScan() {
+      const fileInput = document.getElementById('body-scan-file-input');
+      fileInput.value = '';
+      fileInput.click();
+    }
+
+    async function handleBodyScreenshotUpload(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const key = getApiKey();
+      if (!key) {
+        showToast('設定画面でAPIキーを入力してください', 'info');
+        openSettingsModal();
+        return;
+      }
+
+      const scanBtn = document.getElementById('btn-body-screenshot-scan');
+      const statusBanner = document.getElementById('body-scan-status-banner');
+
+      scanBtn.disabled = true;
+      scanBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-xs"></i> <span>読取中...</span>`;
+      statusBanner.className = "mb-3 p-2.5 rounded-xl text-xs border bg-indigo-50 border-indigo-200 text-indigo-800 flex items-center gap-2";
+      statusBanner.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-indigo-600"></i> <span>体組成計スクショをGeminiで高精度解析中...</span>`;
+      statusBanner.classList.remove('hidden');
+
+      try {
+        const base64Data = await fileToBase64(file);
+        const promptText = `
+この画像は体組成計またはスマホ健康管理アプリの測定結果画面スクリーンショットです。
+表示されている数値を正確に抽出し、JSON形式で返してください:
+- weight: 体重(kg)の数値（例: 79.1）
+- bodyFat: 体脂肪率(%)の数値（例: 25.5）
+- bmi: 推定BMI（例: 26.1）
+- skeletalMuscle: 骨格筋量(kg)
+- visceralFat: 内臓脂肪レベル
+- bmr: 基礎代謝率(kcal)
+- lbm: 除脂肪体重(kg)
+該当する項目が見当たらない場合はnullにしてください。
+`;
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${key}`;
+        const payload = {
+          contents: [{
+            role: "user",
+            parts: [
+              { text: promptText },
+              { inlineData: { mimeType: file.type || "image/jpeg", data: base64Data } }
+            ]
+          }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                weight: { type: "NUMBER" },
+                bodyFat: { type: "NUMBER" },
+                bmi: { type: "NUMBER" },
+                skeletalMuscle: { type: "NUMBER" },
+                visceralFat: { type: "NUMBER" },
+                bmr: { type: "NUMBER" },
+                lbm: { type: "NUMBER" }
+              },
+              required: ["weight"]
+            }
+          }
+        };
+
+        const res = await fetchWithRetry(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await res.json();
+        const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!jsonText) throw new Error("読取に失敗しました");
+
+        const data = JSON.parse(jsonText);
+        const day = getDayData(currentDate);
+
+        if (data.weight) day.weight = String(data.weight);
+        if (data.bodyFat !== undefined && data.bodyFat !== null) day.bodyFat = String(data.bodyFat);
+
+        const detailParts = [];
+        if (data.bmi) detailParts.push(`BMI: ${data.bmi}`);
+        if (data.skeletalMuscle) detailParts.push(`骨格筋量: ${data.skeletalMuscle}kg`);
+        if (data.bmr) detailParts.push(`基礎代謝: ${data.bmr}kcal`);
+        if (data.visceralFat) detailParts.push(`内臓脂肪: ${data.visceralFat}`);
+        if (data.lbm) detailParts.push(`除脂肪体重: ${data.lbm}kg`);
+
+        if (detailParts.length > 0) {
+          const detailStr = `[体組成データ] ${detailParts.join(', ')}`;
+          if (!day.note || day.note.trim() === '') {
+            day.note = detailStr;
+          } else if (!day.note.includes('[体組成データ]')) {
+            day.note = `${day.note}\n${detailStr}`;
+          }
+        }
+
+        saveDayData(currentDate, day);
+        updateUI();
+
+        statusBanner.className = "mb-3 p-2.5 rounded-xl text-xs border bg-emerald-50 border-emerald-200 text-emerald-800 flex items-center justify-between";
+        statusBanner.innerHTML = `
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-check text-emerald-600"></i>
+            <span><strong>読取完了:</strong> 体重 <strong>${data.weight}kg</strong>${data.bodyFat ? `, 体脂肪率 <strong>${data.bodyFat}%</strong>` : ''} を反映しました</span>
+          </div>
+          <button type="button" onclick="this.parentElement.classList.add('hidden')" class="text-emerald-700 font-bold ml-2"><i class="fa-solid fa-xmark"></i></button>
+        `;
+        showToast(`体重(${data.weight}kg)${data.bodyFat ? `・体脂肪率(${data.bodyFat}%)` : ''}を読取保存しました！`);
+      } catch (err) {
+        console.error(err);
+        statusBanner.className = "mb-3 p-2.5 rounded-xl text-xs border bg-rose-50 border-rose-200 text-rose-800 flex items-center justify-between";
+        statusBanner.innerHTML = `
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-exclamation text-rose-500"></i>
+            <span>読み取りに失敗しました。数値を手動でご入力ください。</span>
+          </div>
+          <button type="button" onclick="this.parentElement.classList.add('hidden')" class="text-rose-700 font-bold ml-2"><i class="fa-solid fa-xmark"></i></button>
+        `;
+      } finally {
+        scanBtn.disabled = false;
+        scanBtn.innerHTML = `<i class="fa-solid fa-camera text-[11px]"></i> <span>スクショ読取</span>`;
+      }
+    }
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderMealCategoryList(category, items, subtotal) {
+      const listEl = document.getElementById(`meal-list-${category}`);
+      const badgeEl = document.getElementById(`badge-${category}-subtotal`);
+      badgeEl.innerText = `(${Math.round(subtotal)} kcal)`;
+
+      if (!items || items.length === 0) {
+        const labels = { breakfast: '朝食', lunch: '昼食', dinner: '夕食', snack: '間食' };
+        listEl.innerHTML = `<div class="text-center py-5 text-xs text-slate-400">${labels[category]}の記録はありません</div>`;
+        return;
+      }
+
+      listEl.innerHTML = items.map(m => `
+        <div class="px-3 py-2.5 flex items-center justify-between hover:bg-slate-50 transition rounded-xl">
+          <div class="min-w-0 pr-2">
+            <h4 class="text-xs sm:text-sm font-bold text-slate-800 truncate">${escapeHtml(m.name)}</h4>
+            <div class="flex items-center gap-2 text-[10px] text-slate-500 font-medium">
+              <span class="text-slate-800 font-extrabold">${Math.round(m.calories)} kcal</span>
+              <span class="text-rose-600 font-semibold">P:${m.p || 0}g</span>
+              <span class="text-amber-600 font-semibold">F:${m.f || 0}g</span>
+              <span class="text-sky-600 font-semibold">C:${m.c || 0}g</span>
             </div>
-          `).join('');
+          </div>
+          <div class="flex items-center gap-1 shrink-0">
+            <button onclick="editMeal('${m.id}')" class="p-1.5 text-slate-400 hover:text-slate-600 transition"><i class="fa-solid fa-pencil text-xs"></i></button>
+            <button onclick="deleteMeal('${m.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 transition"><i class="fa-solid fa-trash text-xs"></i></button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderWeeklyChart() {
+      const ctx = document.getElementById('weeklyChart');
+      if (!ctx) return;
+
+      const data = getStorageData();
+      const settings = data.settings || defaultSettings;
+      const days = data.days || {};
+
+      const labels = [];
+      const calPoints = [];
+      const targetPoints = [];
+
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(currentDate);
+        d.setDate(d.getDate() - i);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dayNum = String(d.getDate()).padStart(2, '0');
+        const dStr = `${y}-${m}-${dayNum}`;
+
+        labels.push(`${m}/${dayNum}`);
+        targetPoints.push(settings.calories);
+
+        const dayRecord = days[dStr];
+        let dayTotal = 0;
+        if (dayRecord && dayRecord.meals) {
+          dayRecord.meals.forEach(meal => {
+            dayTotal += (Number(meal.calories) || 0);
+          });
+        }
+        calPoints.push(Math.round(dayTotal));
+      }
+
+      if (chartInstance) chartInstance.destroy();
+
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: '摂取カロリー',
+              data: calPoints,
+              backgroundColor: calPoints.map(c => c > settings.calories ? 'rgba(244, 63, 94, 0.85)' : 'rgba(16, 185, 129, 0.85)'),
+              borderRadius: 6
+            },
+            {
+              type: 'line',
+              label: '目標',
+              data: targetPoints,
+              borderColor: 'rgba(239, 68, 68, 0.7)',
+              borderWidth: 2,
+              borderDash: [4, 4],
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: (c) => `${c.dataset.label || ''}: ${c.raw} kcal` } }
+          },
+          scales: {
+            y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } },
+            x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+          }
         }
       });
     }
 
-    async function triggerAiAutoEstimate() {
-      const key = getApiKey();
-      const hintEl = document.getElementById('ai-estimate-hint');
-      hintEl.classList.remove('hidden');
-
-      if (!key) {
-        hintEl.innerHTML = `<span class="text-rose-500 font-bold">⚠️ 右上の「設定」からGemini APIキーを入力してください。</span>`;
-        return;
-      }
-
-      const dishName = document.getElementById('meal-name-input').value.trim();
-      if (!dishName) {
-        hintEl.innerHTML = `<span class="text-amber-600">料理名を入力してください。</span>`;
-        return;
-      }
-
-      hintEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-indigo-600"></i> AIが栄養価を計算中...`;
-
-      // 複数のモデルエンドポイントをフォールバック試行
-      const modelsToTry = [
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
-      ];
-
-      const prompt = `料理「${dishName}」の1人前あたりの標準的なエネルギー(kcal)、たんぱく質(g)、脂質(g)、炭水化物(g)を推定し、JSONのみで出力してください。形式: {"calories": 450, "p": 15.2, "f": 10.5, "c": 65.0}`;
-
-      let success = false;
-      let lastErrorMessage = "";
-
-      for (const endpoint of modelsToTry) {
-        try {
-          const res = await fetch(`${endpoint}?key=${key}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }]
-            })
-          });
-
-          const data = await res.json();
-          if (!res.ok) {
-            lastErrorMessage = data?.error?.message || `HTTP ${res.status}`;
-            continue;
-          }
-
-          const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (rawText) {
-            const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-            const parsed = JSON.parse(cleanJson);
-            document.getElementById('meal-cal-input').value = Math.round(parsed.calories || parsed.energy || 0);
-            document.getElementById('meal-p-input').value = (parsed.p || parsed.protein || 0).toFixed(1);
-            document.getElementById('meal-f-input').value = (parsed.f || parsed.fat || 0).toFixed(1);
-            document.getElementById('meal-c-input').value = (parsed.c || parsed.carbs || 0).toFixed(1);
-            hintEl.innerHTML = `<span class="text-emerald-600 font-bold">✨ 自動入力完了！</span>`;
-            success = true;
-            break;
-          }
-        } catch (err) {
-          lastErrorMessage = err.message;
-        }
-      }
-
-      if (!success) {
-        hintEl.innerHTML = `<span class="text-rose-500 font-bold">❌ 推定に失敗しました: ${lastErrorMessage}</span>`;
-      }
+    function shiftDate(offset) {
+      const d = new Date(currentDate);
+      d.setDate(d.getDate() + offset);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const dayNum = String(d.getDate()).padStart(2, '0');
+      currentDate = `${y}-${m}-${dayNum}`;
+      updateUI();
     }
 
-    function saveMealForm(e) {
-      e.preventDefault();
+    function goToToday() {
+      currentDate = getTodayString();
+      updateUI();
+      showToast('今日の日付に移動しました');
+    }
+
+    function onDateInputChange(val) {
+      if (!val) return;
+      currentDate = val;
+      updateUI();
+    }
+
+    function addWater(amount) {
+      const day = getDayData(currentDate);
+      day.water = (day.water || 0) + amount;
+      saveDayData(currentDate, day);
+      updateUI();
+      showToast(`水分 +${amount}ml を記録`);
+    }
+
+    function resetWater() {
+      const day = getDayData(currentDate);
+      day.water = 0;
+      saveDayData(currentDate, day);
+      updateUI();
+      showToast('水分摂取量をリセットしました');
+    }
+
+    function quickAddPreset(name, cal, p, f, c) {
       const day = getDayData(currentDate);
       day.meals.push({
-        id: 'meal_' + Date.now(),
-        name: document.getElementById('meal-name-input').value.trim(),
-        category: document.getElementById('meal-category-val').value,
-        calories: Number(document.getElementById('meal-cal-input').value) || 0,
-        p: Number(document.getElementById('meal-p-input').value) || 0,
-        f: Number(document.getElementById('meal-f-input').value) || 0,
-        c: Number(document.getElementById('meal-c-input').value) || 0
+        id: 'meal_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        name: name, category: 'snack', calories: cal, p: p, f: f, c: c
       });
       saveDayData(currentDate, day);
-      closeMealModal();
       updateUI();
-      showToast('食事を保存しました');
-    }
-
-    function deleteMeal(id) {
-      const day = getDayData(currentDate);
-      day.meals = (day.meals || []).filter(m => m.id !== id);
-      saveDayData(currentDate, day);
-      updateUI();
+      showToast(`${name} を追加しました`);
     }
 
     function openMealModal(cat = 'lunch') {
-      selectMealFormCat(cat);
+      document.getElementById('meal-modal-title').innerText = '食事を記録';
+      document.getElementById('meal-edit-id').value = '';
       document.getElementById('meal-name-input').value = '';
       document.getElementById('meal-cal-input').value = '';
       document.getElementById('meal-p-input').value = '';
       document.getElementById('meal-f-input').value = '';
       document.getElementById('meal-c-input').value = '';
       document.getElementById('ai-estimate-hint').classList.add('hidden');
+      selectMealFormCat(cat);
       document.getElementById('meal-modal').classList.remove('hidden');
     }
-    function closeMealModal() { document.getElementById('meal-modal').classList.add('hidden'); }
+
+    function closeMealModal() {
+      document.getElementById('meal-modal').classList.add('hidden');
+    }
+
     function selectMealFormCat(cat) {
       document.getElementById('meal-category-val').value = cat;
       ['breakfast', 'lunch', 'dinner', 'snack'].forEach(c => {
-        document.getElementById(`cat-btn-${c}`).className = c === cat ? 'py-1 rounded-lg bg-white text-emerald-700 shadow-xs' : 'py-1 rounded-lg';
+        const btn = document.getElementById(`cat-btn-${c}`);
+        btn.className = (c === cat) ? 'py-1.5 rounded-lg bg-white text-emerald-700 shadow-xs' : 'py-1.5 rounded-lg hover:text-slate-900';
       });
     }
 
-    function openSettingsModal() {
+    function editMeal(mealId) {
+      const day = getDayData(currentDate);
+      const meal = (day.meals || []).find(m => m.id === mealId);
+      if (!meal) return;
+
+      document.getElementById('meal-modal-title').innerText = '食事を編集';
+      document.getElementById('meal-edit-id').value = meal.id;
+      document.getElementById('meal-name-input').value = meal.name;
+      document.getElementById('meal-cal-input').value = meal.calories;
+      document.getElementById('meal-p-input').value = meal.p || 0;
+      document.getElementById('meal-f-input').value = meal.f || 0;
+      document.getElementById('meal-c-input').value = meal.c || 0;
+      selectMealFormCat(meal.category || 'lunch');
+      document.getElementById('meal-modal').classList.remove('hidden');
+    }
+
+    function deleteMeal(mealId) {
+      const day = getDayData(currentDate);
+      day.meals = (day.meals || []).filter(m => m.id !== mealId);
+      saveDayData(currentDate, day);
+      updateUI();
+      showToast('食事を削除しました');
+    }
+
+    function saveMealForm(e) {
+      e.preventDefault();
+      const id = document.getElementById('meal-edit-id').value;
+      const name = document.getElementById('meal-name-input').value.trim();
+      const category = document.getElementById('meal-category-val').value;
+      const cal = Number(document.getElementById('meal-cal-input').value) || 0;
+      const p = Number(document.getElementById('meal-p-input').value) || 0;
+      const f = Number(document.getElementById('meal-f-input').value) || 0;
+      const c = Number(document.getElementById('meal-c-input').value) || 0;
+
+      const day = getDayData(currentDate);
+      if (id) {
+        const existing = day.meals.find(m => m.id === id);
+        if (existing) {
+          existing.name = name; existing.category = category; existing.calories = cal; existing.p = p; existing.f = f; existing.c = c;
+        }
+      } else {
+        day.meals.push({
+          id: 'meal_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          name, category, calories: cal, p, f, c
+        });
+      }
+
+      saveDayData(currentDate, day);
+      closeMealModal();
+      updateUI();
+      showToast(`${name} を保存しました`);
+    }
+
+    function handleNameInputKeydown(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        triggerAiAutoEstimate();
+      }
+    }
+
+    async function triggerAiAutoEstimate() {
+      const key = getApiKey();
+      if (!key) {
+        showToast('右上の「設定」からGemini APIキーを入力してください', 'info');
+        openSettingsModal();
+        return;
+      }
+
+      const dishName = document.getElementById('meal-name-input').value.trim();
+      if (!dishName) {
+        showToast('料理名を入力してください', 'info');
+        return;
+      }
+
+      const hintEl = document.getElementById('ai-estimate-hint');
+      hintEl.classList.remove('hidden');
+      hintEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-indigo-600"></i> AIが栄養価を推定中...`;
+
+      try {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${key}`;
+        const payload = {
+          contents: [{ parts: [{ text: `料理「${dishName}」の一般的な1人前の標準的なエネルギー(kcal)、タンパク質(P/g)、脂質(F/g)、炭水化物(C/g)を推定してください。` }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                calories: { type: "NUMBER" },
+                protein: { type: "NUMBER" },
+                fat: { type: "NUMBER" },
+                carbs: { type: "NUMBER" },
+                portionNote: { type: "STRING" }
+              },
+              required: ["calories", "protein", "fat", "carbs"]
+            }
+          }
+        };
+
+        const res = await fetchWithRetry(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!jsonText) throw new Error("Empty response");
+
+        const parsed = JSON.parse(jsonText);
+        document.getElementById('meal-cal-input').value = Math.round(parsed.calories || 0);
+        document.getElementById('meal-p-input').value = (parsed.protein || 0).toFixed(1);
+        document.getElementById('meal-f-input').value = (parsed.fat || 0).toFixed(1);
+        document.getElementById('meal-c-input').value = (parsed.carbs || 0).toFixed(1);
+
+        hintEl.innerHTML = `<span class="text-emerald-600 font-bold">✨ 自動補完完了:</span> ${parsed.portionNote || '1人前目安'}`;
+        showToast('AI推定値を自動入力しました');
+      } catch (err) {
+        console.error(err);
+        hintEl.innerHTML = `<span class="text-rose-500">推定に失敗しました。数値を手動でご入力ください。</span>`;
+      }
+    }
+
+    let smartLogParsedItems = [];
+
+    function openSmartLogModal() {
+      smartLogParsedItems = [];
+      document.getElementById('smartlog-input').value = '';
+      document.getElementById('smartlog-preview-container').classList.add('hidden');
+      document.getElementById('btn-smartlog-apply').classList.add('hidden');
+      document.getElementById('btn-smartlog-parse').classList.remove('hidden');
+      document.getElementById('smartlog-modal').classList.remove('hidden');
+    }
+
+    function closeSmartLogModal() {
+      document.getElementById('smartlog-modal').classList.add('hidden');
+    }
+
+    function fillSmartLogSample(type) {
+      if (type === 1) {
+        document.getElementById('smartlog-input').value = '朝はセブンの鮭おにぎりと味玉2個。昼はサラダチキンバーと納豆巻。間食にプロテイン200ml。';
+      } else {
+        document.getElementById('smartlog-input').value = '昼は大戸屋で鶏と野菜の黒酢あん定食ご飯普通盛り。夜は豆腐とワカメの味噌汁、焼き魚。';
+      }
+    }
+
+    async function parseSmartLogText() {
+      const key = getApiKey();
+      if (!key) {
+        showToast('設定画面でAPIキーを入力してください', 'info');
+        openSettingsModal();
+        return;
+      }
+
+      const text = document.getElementById('smartlog-input').value.trim();
+      if (!text) {
+        showToast('食事内容の文章を入力してください', 'info');
+        return;
+      }
+
+      const parseBtn = document.getElementById('btn-smartlog-parse');
+      parseBtn.disabled = true;
+      parseBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 解析中...`;
+
+      try {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${key}`;
+        const payload = {
+          contents: [{ parts: [{ text: `以下の食事内容を個々の食品・料理に分解し、朝食(breakfast)/昼食(lunch)/夕食(dinner)/間食(snack)に分類して、標準的なカロリー・PFCを推定してください:\n\n${text}` }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  name: { type: "STRING" },
+                  category: { type: "STRING", enum: ["breakfast", "lunch", "dinner", "snack"] },
+                  calories: { type: "NUMBER" },
+                  p: { type: "NUMBER" },
+                  f: { type: "NUMBER" },
+                  c: { type: "NUMBER" }
+                },
+                required: ["name", "category", "calories", "p", "f", "c"]
+              }
+            }
+          }
+        };
+
+        const res = await fetchWithRetry(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!jsonText) throw new Error("No response");
+
+        smartLogParsedItems = JSON.parse(jsonText);
+        renderSmartLogPreview();
+      } catch (err) {
+        console.error(err);
+        showToast('一括解析に失敗しました。', 'error');
+      } finally {
+        parseBtn.disabled = false;
+        parseBtn.innerHTML = `<i class="fa-solid fa-sparkles text-xs"></i> <span>再解析する</span>`;
+      }
+    }
+
+    function renderSmartLogPreview() {
+      const container = document.getElementById('smartlog-preview-container');
+      const listEl = document.getElementById('smartlog-items-list');
+      const applyBtn = document.getElementById('btn-smartlog-apply');
+
+      if (!smartLogParsedItems || smartLogParsedItems.length === 0) {
+        container.classList.add('hidden');
+        applyBtn.classList.add('hidden');
+        return;
+      }
+
+      container.classList.remove('hidden');
+      applyBtn.classList.remove('hidden');
+
+      const catNames = { breakfast: '朝', lunch: '昼', dinner: '夜', snack: '間' };
+
+      listEl.innerHTML = smartLogParsedItems.map((item) => `
+        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2">
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-200 text-slate-700">${catNames[item.category] || '昼'}</span>
+            <strong class="text-slate-800">${escapeHtml(item.name)}</strong>
+          </div>
+          <div class="text-right text-[11px] font-semibold text-slate-600">
+            <span class="text-slate-900 font-extrabold">${Math.round(item.calories)} kcal</span>
+            <span class="text-slate-400 text-[10px]"> (P:${item.p}g F:${item.f}g C:${item.c}g)</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function applySmartLogItems() {
+      if (!smartLogParsedItems || smartLogParsedItems.length === 0) return;
+      const day = getDayData(currentDate);
+
+      smartLogParsedItems.forEach(item => {
+        day.meals.push({
+          id: 'meal_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          name: item.name,
+          category: item.category || 'lunch',
+          calories: Math.round(item.calories || 0),
+          p: Number(item.p) || 0,
+          f: Number(item.f) || 0,
+          c: Number(item.c) || 0
+        });
+      });
+
+      saveDayData(currentDate, day);
+      closeSmartLogModal();
+      updateUI();
+      showToast(`${smartLogParsedItems.length}件の食事を一括記録しました！`);
+    }
+
+    let photoDetectedItems = [];
+
+    function openPhotoModal() {
+      currentPhotoBase64 = null;
+      photoDetectedItems = [];
+      document.getElementById('photo-preview-box').classList.add('hidden');
+      document.getElementById('photo-placeholder-box').classList.remove('hidden');
+      document.getElementById('photo-result-container').classList.add('hidden');
+      document.getElementById('btn-photo-analyze').disabled = true;
+      document.getElementById('btn-photo-apply').classList.add('hidden');
+      setPhotoMode('meal');
+      document.getElementById('photo-modal').classList.remove('hidden');
+    }
+
+    function closePhotoModal() {
+      document.getElementById('photo-modal').classList.add('hidden');
+    }
+
+    function setPhotoMode(mode) {
+      currentPhotoMode = mode;
+      ['meal', 'label', 'barcode'].forEach(m => {
+        const btn = document.getElementById(`tab-photo-${m}`);
+        btn.className = (m === mode) ? 'py-1.5 rounded-lg bg-white text-emerald-700 shadow-xs' : 'py-1.5 rounded-lg hover:text-slate-900';
+      });
+
+      const hints = {
+        meal: '食卓や料理全体の写真を撮影または選択してください',
+        label: '食品パッケージ裏面の「栄養成分表示」を鮮明に撮影してください',
+        barcode: '商品のバーコード(JANコード)やパッケージ正面を撮影してください'
+      };
+      document.getElementById('photo-mode-hint').innerText = hints[mode];
+    }
+
+    function handleImageSelected(e) {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const fullDataUrl = evt.target.result;
+        currentPhotoBase64 = fullDataUrl.split(',')[1];
+        document.getElementById('photo-preview-img').src = fullDataUrl;
+        document.getElementById('photo-preview-box').classList.remove('hidden');
+        document.getElementById('photo-placeholder-box').classList.add('hidden');
+        document.getElementById('btn-photo-analyze').disabled = false;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function analyzeSelectedPhoto() {
+      const key = getApiKey();
+      if (!key) {
+        showToast('設定画面でAPIキーを入力してください', 'info');
+        openSettingsModal();
+        return;
+      }
+
+      if (!currentPhotoBase64) return;
+      const analyzeBtn = document.getElementById('btn-photo-analyze');
+      analyzeBtn.disabled = true;
+      analyzeBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 画像を解析中...`;
+
+      let promptText = "";
+      if (currentPhotoMode === 'meal') {
+        promptText = "画像に写っている料理や食材をすべて検出し、品目名、カロリー(kcal)、タンパク質(P/g)、脂質(F/g)、炭水化物(C/g)を推定してください。";
+      } else if (currentPhotoMode === 'label') {
+        promptText = "画像に写っている「栄養成分表示」の数値をOCR抽出してください。エネルギー(kcal)、たんぱく質(g)、脂質(g)、炭水化物(g)の値を正確に読み取ってください。";
+      } else {
+        promptText = "画像に写っているバーコード(JANコード)や商品パッケージから商品名と、その商品の標準的なエネルギー(kcal)・PFC数値を特定してください。";
+      }
+
+      try {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${key}`;
+        const payload = {
+          contents: [{
+            role: "user",
+            parts: [
+              { text: promptText },
+              { inlineData: { mimeType: "image/jpeg", data: currentPhotoBase64 } }
+            ]
+          }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  name: { type: "STRING" },
+                  calories: { type: "NUMBER" },
+                  p: { type: "NUMBER" },
+                  f: { type: "NUMBER" },
+                  c: { type: "NUMBER" }
+                },
+                required: ["name", "calories", "p", "f", "c"]
+              }
+            }
+          }
+        };
+
+        const res = await fetchWithRetry(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!jsonText) throw new Error("No response");
+
+        photoDetectedItems = JSON.parse(jsonText);
+        renderPhotoResultItems();
+      } catch (err) {
+        console.error(err);
+        showToast('画像解析に失敗しました。鮮明な写真でお試しください。', 'error');
+      } finally {
+        analyzeBtn.disabled = false;
+        analyzeBtn.innerHTML = `<i class="fa-solid fa-sparkles text-xs"></i> <span>再解析</span>`;
+      }
+    }
+
+    function renderPhotoResultItems() {
+      const container = document.getElementById('photo-result-container');
+      const listEl = document.getElementById('photo-items-list');
+      const applyBtn = document.getElementById('btn-photo-apply');
+
+      if (!photoDetectedItems || photoDetectedItems.length === 0) {
+        container.classList.add('hidden');
+        applyBtn.classList.add('hidden');
+        showToast('食品を検出できませんでした。角度を変えてお試しください。', 'info');
+        return;
+      }
+
+      container.classList.remove('hidden');
+      applyBtn.classList.remove('hidden');
+
+      listEl.innerHTML = photoDetectedItems.map((item) => `
+        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+          <div>
+            <strong class="text-slate-800 block">${escapeHtml(item.name)}</strong>
+            <span class="text-[10px] text-slate-500">P:${item.p}g | F:${item.f}g | C:${item.c}g</span>
+          </div>
+          <span class="text-xs font-extrabold text-emerald-700">${Math.round(item.calories)} kcal</span>
+        </div>
+      `).join('');
+    }
+
+    function applyPhotoItems() {
+      if (!photoDetectedItems || photoDetectedItems.length === 0) return;
+      const targetCat = document.getElementById('photo-target-category').value;
+      const day = getDayData(currentDate);
+
+      photoDetectedItems.forEach(item => {
+        day.meals.push({
+          id: 'meal_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          name: item.name,
+          category: targetCat,
+          calories: Math.round(item.calories || 0),
+          p: Number(item.p) || 0,
+          f: Number(item.f) || 0,
+          c: Number(item.c) || 0
+        });
+      });
+
+      saveDayData(currentDate, day);
+      closePhotoModal();
+      updateUI();
+      showToast(`${photoDetectedItems.length}件の食事を記録しました！`);
+    }
+
+    let lastSearchCandidate = null;
+
+    function openSearchModal() { document.getElementById('search-modal').classList.remove('hidden'); }
+    function closeSearchModal() { document.getElementById('search-modal').classList.add('hidden'); }
+    function fillSearchQuery(q) {
+      document.getElementById('search-query-input').value = q;
+      executeGroundedSearch();
+    }
+
+    async function executeGroundedSearch() {
+      const key = getApiKey();
+      if (!key) {
+        showToast('設定画面でAPIキーを入力してください', 'info');
+        openSettingsModal();
+        return;
+      }
+
+      const query = document.getElementById('search-query-input').value.trim();
+      if (!query) return;
+
+      const resBox = document.getElementById('search-response-box');
+      const resText = document.getElementById('search-response-text');
+      const candidateCard = document.getElementById('search-log-candidate');
+
+      resBox.classList.remove('hidden');
+      candidateCard.classList.add('hidden');
+      resText.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-sky-600"></i> Google検索で最新の栄養情報をリサーチ中...`;
+
+      try {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${key}`;
+        const payload = {
+          contents: [{ parts: [{ text: `商品または料理「${query}」の公式栄養成分表示（エネルギーkcal、たんぱく質、脂質、炭水化物）を回答してください。` }] }],
+          tools: [{ "google_search": {} }]
+        };
+
+        const res = await fetchWithRetry(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "情報が見つかりませんでした。";
+        resText.innerText = text;
+
+        const calMatch = text.match(/(\d{2,4})\s*(?:kcal|キロカロリー)/i);
+        const pMatch = text.match(/(?:たんぱく質|タンパク質|P)[:：\s]*([\d\.]+)\s*g/i);
+        const fMatch = text.match(/(?:脂質|F)[:：\s]*([\d\.]+)\s*g/i);
+        const cMatch = text.match(/(?:炭水化物|糖質|C)[:：\s]*([\d\.]+)\s*g/i);
+
+        if (calMatch) {
+          lastSearchCandidate = {
+            name: query.split(' ')[0] || query,
+            calories: parseInt(calMatch[1], 10),
+            p: pMatch ? parseFloat(pMatch[1]) : 0,
+            f: fMatch ? parseFloat(fMatch[1]) : 0,
+            c: cMatch ? parseFloat(cMatch[1]) : 0
+          };
+          document.getElementById('search-candidate-name').innerText = lastSearchCandidate.name;
+          document.getElementById('search-candidate-macros').innerText = `${lastSearchCandidate.calories} kcal (P:${lastSearchCandidate.p}g F:${lastSearchCandidate.f}g C:${lastSearchCandidate.c}g)`;
+          candidateCard.classList.remove('hidden');
+        }
+      } catch (err) {
+        console.error(err);
+        resText.innerHTML = `<span class="text-rose-600">検索に失敗しました。</span>`;
+      }
+    }
+
+    function logCandidateFromSearch() {
+      if (!lastSearchCandidate) return;
+      const day = getDayData(currentDate);
+      day.meals.push({
+        id: 'meal_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        name: lastSearchCandidate.name,
+        category: 'lunch',
+        calories: lastSearchCandidate.calories,
+        p: lastSearchCandidate.p,
+        f: lastSearchCandidate.f,
+        c: lastSearchCandidate.c
+      });
+      saveDayData(currentDate, day);
+      closeSearchModal();
+      updateUI();
+      showToast(`${lastSearchCandidate.name} を食事に記録しました！`);
+    }
+
+    function openSuggestModal() {
+      const day = getDayData(currentDate);
       const settings = getStorageData().settings || defaultSettings;
+
+      let currentCal = 0, currentP = 0, currentF = 0, currentC = 0;
+      (day.meals || []).forEach(m => {
+        currentCal += (Number(m.calories) || 0);
+        currentP += (Number(m.p) || 0);
+        currentF += (Number(m.f) || 0);
+        currentC += (Number(m.c) || 0);
+      });
+
+      document.getElementById('suggest-gap-cal').innerText = Math.max(0, Math.round(settings.calories - currentCal));
+      document.getElementById('suggest-gap-p').innerText = Math.max(0, (settings.p - currentP).toFixed(1));
+      document.getElementById('suggest-gap-f').innerText = Math.max(0, (settings.f - currentF).toFixed(1));
+      document.getElementById('suggest-gap-c').innerText = Math.max(0, (settings.c - currentC).toFixed(1));
+      document.getElementById('suggest-results-list').innerHTML = '';
+      document.getElementById('suggest-modal').classList.remove('hidden');
+    }
+
+    function closeSuggestModal() { document.getElementById('suggest-modal').classList.add('hidden'); }
+
+    async function generateMealSuggestions() {
+      const key = getApiKey();
+      if (!key) {
+        showToast('設定画面でAPIキーを入力してください', 'info');
+        openSettingsModal();
+        return;
+      }
+
+      const gapCal = document.getElementById('suggest-gap-cal').innerText;
+      const gapP = document.getElementById('suggest-gap-p').innerText;
+      const gapF = document.getElementById('suggest-gap-f').innerText;
+      const gapC = document.getElementById('suggest-gap-c').innerText;
+      const pref = document.getElementById('suggest-preference-input').value.trim();
+      const listEl = document.getElementById('suggest-results-list');
+
+      listEl.innerHTML = `<div class="text-center py-6 text-xs text-amber-700 font-bold"><i class="fa-solid fa-spinner fa-spin mr-1.5"></i> 残りの栄養枠にぴったり収まる献立を考案中...</div>`;
+
+      try {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${key}`;
+        const prompt = `本日の残り目標枠は「エネルギー 約${gapCal}kcal、タンパク質 ${gapP}g、脂質 ${gapF}g、炭水化物 ${gapC}g」です。ユーザーの要望: ${pref || 'なし'}。この不足分をバランス良く補える健康的な食事・献立を3案提案してください。`;
+
+        const payload = {
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  title: { type: "STRING" },
+                  description: { type: "STRING" },
+                  calories: { type: "NUMBER" },
+                  p: { type: "NUMBER" },
+                  f: { type: "NUMBER" },
+                  c: { type: "NUMBER" }
+                },
+                required: ["title", "description", "calories", "p", "f", "c"]
+              }
+            }
+          }
+        };
+
+        const res = await fetchWithRetry(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        const suggestions = JSON.parse(result?.candidates?.[0]?.content?.parts?.[0]?.text);
+
+        listEl.innerHTML = suggestions.map((s, idx) => `
+          <div class="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-xs space-y-2">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <h4 class="text-xs sm:text-sm font-bold text-slate-900">${escapeHtml(s.title)}</h4>
+                <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">${escapeHtml(s.description)}</p>
+              </div>
+              <span class="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-lg text-xs font-extrabold shrink-0">${Math.round(s.calories)} kcal</span>
+            </div>
+            <div class="flex items-center gap-3 text-[10px] font-semibold text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-xl">
+              <span class="text-rose-600">P: ${s.p}g</span>
+              <span class="text-amber-600">F: ${s.f}g</span>
+              <span class="text-sky-600">C: ${s.c}g</span>
+            </div>
+            <div class="flex items-center justify-end gap-2 pt-1">
+              <button onclick="logSuggestedMeal('${escapeHtml(s.title)}', ${s.calories}, ${s.p}, ${s.f}, ${s.c})" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition active:scale-95">この献立を記録</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error(err);
+        listEl.innerHTML = `<div class="text-center py-4 text-xs text-rose-600">献立の生成に失敗しました。</div>`;
+      }
+    }
+
+    function logSuggestedMeal(name, cal, p, f, c) {
+      const day = getDayData(currentDate);
+      day.meals.push({
+        id: 'meal_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        name: name, category: 'dinner', calories: Math.round(cal), p: Number(p) || 0, f: Number(f) || 0, c: Number(c) || 0
+      });
+      saveDayData(currentDate, day);
+      closeSuggestModal();
+      updateUI();
+      showToast(`${name} を記録しました！`);
+    }
+
+    async function generateDietitianReview() {
+      const key = getApiKey();
+      if (!key) {
+        showToast('設定画面でAPIキーを入力してください', 'info');
+        openSettingsModal();
+        return;
+      }
+
+      const day = getDayData(currentDate);
+      const settings = getStorageData().settings || defaultSettings;
+      const btn = document.getElementById('btn-generate-review');
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 診断中...`;
+
+      let totalCal = 0, totalP = 0, totalF = 0, totalC = 0;
+      const mealNames = (day.meals || []).map(m => {
+        totalCal += (Number(m.calories) || 0);
+        totalP += (Number(m.p) || 0);
+        totalF += (Number(m.f) || 0);
+        totalC += (Number(m.c) || 0);
+        return `${m.name}(${m.calories}kcal)`;
+      }).join(', ');
+
+      const prompt = `
+日付: ${currentDate}
+摂取カロリー: ${totalCal} kcal (目標: ${settings.calories} kcal)
+PFC摂取量: P ${totalP.toFixed(1)}g (目標 ${settings.p}g), F ${totalF.toFixed(1)}g (目標 ${settings.f}g), C ${totalC.toFixed(1)}g (目標 ${settings.c}g)
+水分摂取量: ${day.water || 0} ml
+体重: ${day.weight ? day.weight + 'kg' : '未記録'}
+体脂肪率: ${day.bodyFat ? day.bodyFat + '%' : '未記録'}
+メモ: ${day.note || '特になし'}
+食事内訳: ${mealNames || '記録なし'}
+
+プロの親切な専属管理栄養士として、このユーザーの1日の食事内容・PFCバランス・体脂肪率や水分を分析し、良かった点・改善点・明日への具体的アドバイスを250〜350文字程度の日本語で温かく講評してください。
+      `;
+
+      try {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${key}`;
+        const res = await fetchWithRetry(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        const result = await res.json();
+        const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) throw new Error("Could not generate review");
+
+        const nowTime = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        day.aiReview = { text: text, time: nowTime };
+        saveDayData(currentDate, day);
+
+        document.getElementById('dietitian-result-box').classList.remove('hidden');
+        document.getElementById('dietitian-full-text').innerText = text;
+        document.getElementById('dietitian-timestamp').innerText = nowTime;
+        document.getElementById('btn-play-voice').classList.remove('hidden');
+        document.getElementById('btn-play-voice').classList.add('flex');
+
+        showToast('管理栄養士の診断が完了しました！');
+      } catch (err) {
+        console.error(err);
+        showToast('診断の生成に失敗しました', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> <span>再診断</span>`;
+      }
+    }
+
+    async function playDietitianAudio() {
+      const key = getApiKey();
+      if (!key) {
+        showToast('設定画面でAPIキーを入力してください', 'info');
+        return;
+      }
+
+      const day = getDayData(currentDate);
+      if (!day.aiReview?.text) return;
+
+      const voiceBtn = document.getElementById('btn-play-voice');
+
+      if (currentAudioElement && !currentAudioElement.paused) {
+        currentAudioElement.pause();
+        voiceBtn.innerHTML = `<i class="fa-solid fa-volume-high"></i> <span>音声を再開</span>`;
+        return;
+      }
+
+      if (lastAudioBlobUrl) {
+        if (!currentAudioElement) {
+          currentAudioElement = new Audio(lastAudioBlobUrl);
+          currentAudioElement.onended = () => { voiceBtn.innerHTML = `<i class="fa-solid fa-volume-high"></i> <span>音声で聴く</span>`; };
+        }
+        currentAudioElement.play();
+        voiceBtn.innerHTML = `<i class="fa-solid fa-pause"></i> <span>一時停止</span>`;
+        return;
+      }
+
+      voiceBtn.disabled = true;
+      voiceBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 音声を合成中...`;
+
+      try {
+        const speechPrompt = `明るく親しみやすい管理栄養士の声で優しく語りかけてください: ${day.aiReview.text.slice(0, 200)}`;
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TTS_MODEL}:generateContent?key=${key}`;
+
+        const payload = {
+          contents: [{ parts: [{ text: speechPrompt }] }],
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } }
+            }
+          }
+        };
+
+        const res = await fetchWithRetry(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        const part = result?.candidates?.[0]?.content?.parts?.[0];
+        const audioData = part?.inlineData?.data;
+        const mimeType = part?.inlineData?.mimeType;
+
+        if (audioData && mimeType && mimeType.startsWith("audio/")) {
+          const rateMatch = mimeType.match(/rate=(\d+)/);
+          const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
+          const pcmBuffer = base64ToArrayBuffer(audioData);
+          const pcm16 = new Int16Array(pcmBuffer);
+          const wavBlob = pcmToWav(pcm16, sampleRate);
+
+          lastAudioBlobUrl = URL.createObjectURL(wavBlob);
+          currentAudioElement = new Audio(lastAudioBlobUrl);
+          currentAudioElement.onended = () => { voiceBtn.innerHTML = `<i class="fa-solid fa-volume-high"></i> <span>音声で聴く</span>`; };
+          currentAudioElement.play();
+          voiceBtn.innerHTML = `<i class="fa-solid fa-pause"></i> <span>一時停止</span>`;
+        } else {
+          throw new Error("Invalid audio response");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('音声合成に失敗しました', 'error');
+        voiceBtn.innerHTML = `<i class="fa-solid fa-volume-high"></i> <span>音声で聴く</span>`;
+      } finally {
+        voiceBtn.disabled = false;
+      }
+    }
+
+    function openSettingsModal() {
+      const data = getStorageData();
+      const settings = data.settings || defaultSettings;
       document.getElementById('set-api-key').value = settings.apiKey || '';
-      document.getElementById('set-target-cal').value = settings.calories || 2000;
-      document.getElementById('set-target-p').value = settings.p || 110;
-      document.getElementById('set-target-f').value = settings.f || 50;
-      document.getElementById('set-target-c').value = settings.c || 275;
+      document.getElementById('set-target-height').value = settings.height || 170;
+      document.getElementById('set-target-cal').value = settings.calories;
+      document.getElementById('set-target-p').value = settings.p;
+      document.getElementById('set-target-f').value = settings.f;
+      document.getElementById('set-target-c').value = settings.c;
       document.getElementById('settings-modal').classList.remove('hidden');
     }
+
     function closeSettingsModal() { document.getElementById('settings-modal').classList.add('hidden'); }
 
     function saveTargetSettings(e) {
@@ -447,10 +2316,11 @@
       const data = getStorageData();
       data.settings = {
         apiKey: document.getElementById('set-api-key').value.trim(),
-        calories: Number(document.getElementById('set-target-cal').value) || 2000,
-        p: Number(document.getElementById('set-target-p').value) || 110,
-        f: Number(document.getElementById('set-target-f').value) || 50,
-        c: Number(document.getElementById('set-target-c').value) || 275
+        height: Number(document.getElementById('set-target-height').value) || 170,
+        calories: Number(document.getElementById('set-target-cal').value) || defaultSettings.calories,
+        p: Number(document.getElementById('set-target-p').value) || defaultSettings.p,
+        f: Number(document.getElementById('set-target-f').value) || defaultSettings.f,
+        c: Number(document.getElementById('set-target-c').value) || defaultSettings.c
       };
       setStorageData(data);
       closeSettingsModal();
@@ -458,19 +2328,71 @@
       showToast('設定を保存しました');
     }
 
-    function addWater(a) { const d = getDayData(currentDate); d.water = (d.water || 0) + a; saveDayData(currentDate, d); updateUI(); }
-    function shiftDate(o) { const d = new Date(currentDate); d.setDate(d.getDate() + o); currentDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; updateUI(); }
-    function goToToday() { currentDate = getTodayString(); updateUI(); }
-    function onDateInputChange(v) { if (v) { currentDate = v; updateUI(); } }
-    function showToast(msg) {
-      const toast = document.getElementById('toast');
-      document.getElementById('toast-msg').innerText = msg;
-      toast.classList.remove('translate-y-[-100%]', 'opacity-0');
-      toast.classList.add('translate-y-0', 'opacity-100');
-      setTimeout(() => { toast.classList.remove('translate-y-0', 'opacity-100'); toast.classList.add('translate-y-[-100%]', 'opacity-0'); }, 2000);
+    function openInNewTab() {
+      const url = new URL(window.location.href);
+      url.searchParams.set('date', currentDate);
+      window.open(url.toString(), '_blank');
     }
 
-    window.onload = updateUI;
+    function exportData() {
+      const data = getStorageData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `nutridaily_backup_${currentDate}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('バックアップJSONをダウンロードしました');
+    }
+
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      const toastIcon = document.getElementById('toast-icon');
+
+      toastMsg.innerText = msg;
+      toastIcon.className = (type === 'error') ? 'fa-solid fa-circle-exclamation text-rose-400' : (type === 'info') ? 'fa-solid fa-circle-info text-sky-400' : 'fa-solid fa-check text-emerald-400';
+
+      toast.classList.remove('translate-y-[-100%]', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-[-100%]', 'opacity-0');
+      }, 3000);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    window.onload = function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryDate = urlParams.get('date');
+      if (queryDate && /^\d{4}-\d{2}-\d{2}$/.test(queryDate)) {
+        currentDate = queryDate;
+      } else {
+        currentDate = getTodayString();
+      }
+
+      const storage = getStorageData();
+      if (!storage.days[currentDate] || !storage.days[currentDate].meals || storage.days[currentDate].meals.length === 0) {
+        if (Object.keys(storage.days).length === 0) {
+          storage.days[currentDate] = {
+            meals: [
+              { id: 'sample_1', name: '全粒粉トーストと目玉焼き', category: 'breakfast', calories: 340, p: 14.5, f: 12.0, c: 42.0 },
+              { id: 'sample_2', name: '鶏むね肉のグリル定食', category: 'lunch', calories: 580, p: 46.0, f: 11.5, c: 68.0 }
+            ],
+            water: 800, weight: '64.5', bodyFat: '17.2', note: '朝に20分ウォーキング実施。体調良好。', aiReview: null
+          };
+          setStorageData(storage);
+        }
+      }
+
+      updateUI();
+    };
   </script>
 </body>
 </html>
