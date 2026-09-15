@@ -186,10 +186,6 @@
           <div><span class="text-[11px] text-slate-400 block">除脂肪体重</span><span id="stat-lbm-val" class="text-sm font-extrabold text-slate-800">-- kg</span></div>
           <div class="text-right"><span class="text-[11px] text-slate-400 block">判定</span><span id="stat-bmi-label" class="text-xs font-bold text-slate-600">--</span></div>
         </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">体調メモ</label>
-          <textarea id="daily-note-input" oninput="handleNoteInput(this.value)" rows="2" placeholder="体調や運動など" class="w-full p-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none resize-none"></textarea>
-        </div>
       </div>
 
       <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs flex flex-col justify-between">
@@ -279,7 +275,7 @@
       </div>
       <div class="flex gap-2">
         <input type="text" id="search-query-input" placeholder="例: セブン 鶏団子鍋、吉野家 牛丼並盛" class="flex-1 px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none">
-        <button onclick="executeGroundedSearch()" class="px-4 py-2 bg-sky-600 text-white rounded-xl text-xs font-bold">検索</button>
+        <button id="btn-search-exec" onclick="executeGroundedSearch()" class="px-4 py-2 bg-sky-600 text-white rounded-xl text-xs font-bold">検索</button>
       </div>
       <div id="search-response-box" class="hidden space-y-2 pt-2 border-t border-slate-100">
         <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs" id="search-response-text"></div>
@@ -302,7 +298,7 @@
         <button onclick="closeSuggestModal()" class="text-slate-400 p-1.5"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
       <div class="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs flex justify-between font-bold">
-        <span>残り目標: <span id="suggest-gap-cal">0</span> kcal</span>
+        <span>残り: <span id="suggest-gap-cal">0</span> kcal</span>
         <span class="text-rose-600">P <span id="suggest-gap-p">0</span>g</span>
         <span class="text-amber-600">F <span id="suggest-gap-f">0</span>g</span>
         <span class="text-sky-600">C <span id="suggest-gap-c">0</span>g</span>
@@ -357,7 +353,8 @@
   </div>
 
   <script>
-    const GEMINI_TEXT_MODEL = "gemini-2.5-flash";
+    // --- 安定版モデル設定 ---
+    const GEMINI_TEXT_MODEL = "gemini-1.5-flash";
 
     let currentDate = getTodayString();
     let chartInstance = null;
@@ -404,19 +401,12 @@
       setStorageData(data);
     }
 
-    function extractJSON(text) {
-      try {
-        const match = text.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
-        if (match) return JSON.parse(match[0]);
-        return null;
-      } catch (e) {
-        return null;
-      }
-    }
-
     function showToast(msg, type = 'success') {
       const toast = document.getElementById('toast');
-      document.getElementById('toast-msg').innerText = msg;
+      const toastMsg = document.getElementById('toast-msg');
+      const toastIcon = document.getElementById('toast-icon');
+      toastMsg.innerText = msg;
+      toastIcon.className = (type === 'error') ? 'fa-solid fa-circle-exclamation text-rose-400' : (type === 'info') ? 'fa-solid fa-circle-info text-sky-400' : 'fa-solid fa-check text-emerald-400';
       toast.classList.remove('translate-y-[-100%]', 'opacity-0');
       toast.classList.add('translate-y-0', 'opacity-100');
       setTimeout(() => {
@@ -455,6 +445,15 @@
       const calPercent = Math.min(100, Math.round((totalCal / settings.calories) * 100));
       document.getElementById('stat-calorie-percent').innerText = `${calPercent}%`;
       document.getElementById('stat-calorie-bar').style.width = `${calPercent}%`;
+
+      const statusBadge = document.getElementById('stat-calorie-status');
+      if (totalCal > settings.calories) {
+        statusBadge.innerText = `+${Math.round(totalCal - settings.calories)} kcal 超過`;
+        statusBadge.className = "px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800";
+      } else {
+        statusBadge.innerText = "目標内";
+        statusBadge.className = "px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800";
+      }
 
       document.getElementById('stat-p-val').innerText = totalP.toFixed(1);
       document.getElementById('stat-p-target').innerText = settings.p;
@@ -567,41 +566,70 @@
     function handleBodyFatInput(val) { const day = getDayData(currentDate); day.bodyFat = val; saveDayData(currentDate, day); updateUI(); }
     function handleNoteInput(val) { const day = getDayData(currentDate); day.note = val; saveDayData(currentDate, day); }
 
-    // --- AI Functions ---
+    // --- AI 自動入力（確実な直接JSON応答モード） ---
     async function triggerAiAutoEstimate() {
       const key = getApiKey();
-      if (!key) { showToast('設定画面でAPIキーを入力してください', 'info'); openSettingsModal(); return; }
-      const dishName = document.getElementById('meal-name-input').value.trim();
-      if (!dishName) return;
-
       const hintEl = document.getElementById('ai-estimate-hint');
       hintEl.classList.remove('hidden');
-      hintEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-indigo-600"></i> 計算中...`;
+
+      if (!key) {
+        hintEl.innerHTML = `<span class="text-rose-500 font-bold">⚠️ 右上の「設定」からGemini APIキーを入力してください。</span>`;
+        openSettingsModal();
+        return;
+      }
+      const dishName = document.getElementById('meal-name-input').value.trim();
+      if (!dishName) {
+        hintEl.innerHTML = `<span class="text-amber-600">料理名を入力してください。</span>`;
+        return;
+      }
+
+      hintEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-indigo-600"></i> AIが栄養価を計算中...`;
 
       try {
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${key}`;
+        const prompt = `料理「${dishName}」の1人前あたりの標準的なエネルギー(kcal)、たんぱく質(g)、脂質(g)、炭水化物(g)を推定してください。`;
+
         const res = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: `料理「${dishName}」の1人前のカロリー(kcal)、タンパク質(g)、脂質(g)、炭水化物(g)をJSONで推定してください。形式: {"calories": 450, "p": 15.2, "f": 10.5, "c": 65.0}` }] }]
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: "OBJECT",
+                properties: {
+                  calories: { type: "NUMBER" },
+                  protein: { type: "NUMBER" },
+                  fat: { type: "NUMBER" },
+                  carbs: { type: "NUMBER" }
+                },
+                required: ["calories", "protein", "fat", "carbs"]
+              }
+            }
           })
         });
-        const result = await res.json();
-        const raw = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-        const parsed = extractJSON(raw);
-        if (!parsed) throw new Error("JSON parse error");
 
-        document.getElementById('meal-cal-input').value = Math.round(parsed.calories || parsed.energy || 0);
-        document.getElementById('meal-p-input').value = (parsed.p || parsed.protein || 0).toFixed(1);
-        document.getElementById('meal-f-input').value = (parsed.f || parsed.fat || 0).toFixed(1);
-        document.getElementById('meal-c-input').value = (parsed.c || parsed.carbs || 0).toFixed(1);
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data?.error?.message || `HTTP ${res.status}`);
+        }
+
+        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const parsed = JSON.parse(rawText);
+
+        document.getElementById('meal-cal-input').value = Math.round(parsed.calories || 0);
+        document.getElementById('meal-p-input').value = (parsed.protein || 0).toFixed(1);
+        document.getElementById('meal-f-input').value = (parsed.fat || 0).toFixed(1);
+        document.getElementById('meal-c-input').value = (parsed.carbs || 0).toFixed(1);
         hintEl.innerHTML = `<span class="text-emerald-600 font-bold">✨ 自動入力完了</span>`;
       } catch (e) {
-        hintEl.innerHTML = `<span class="text-rose-500">推定失敗。</span>`;
+        console.error("AI Error:", e);
+        hintEl.innerHTML = `<span class="text-rose-500 font-bold">❌ エラー: ${e.message}</span>`;
       }
     }
 
+    // --- AI 一括自然言語入力 ---
     async function parseSmartLogText() {
       const key = getApiKey();
       if (!key) { showToast('設定画面でAPIキーを入力してください', 'info'); openSettingsModal(); return; }
@@ -614,16 +642,39 @@
 
       try {
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${key}`;
+        const prompt = `以下の食事内容を個々の食品・料理に分解し、朝食(breakfast)/昼食(lunch)/夕食(dinner)/間食(snack)に分類して標準的なカロリー・PFCを推定してください:\n\n${text}`;
+
         const res = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: `食事内容を分解しJSON配列で返してください: [{"name":"品名","category":"breakfast","calories":180,"p":4.5,"f":1.2,"c":38.0}]\n\n${text}` }] }]
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    name: { type: "STRING" },
+                    category: { type: "STRING", enum: ["breakfast", "lunch", "dinner", "snack"] },
+                    calories: { type: "NUMBER" },
+                    p: { type: "NUMBER" },
+                    f: { type: "NUMBER" },
+                    c: { type: "NUMBER" }
+                  },
+                  required: ["name", "category", "calories", "p", "f", "c"]
+                }
+              }
+            }
           })
         });
-        const result = await res.json();
-        const raw = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-        smartLogParsedItems = extractJSON(raw) || [];
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+
+        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        smartLogParsedItems = JSON.parse(rawText);
 
         document.getElementById('smartlog-preview-container').classList.remove('hidden');
         document.getElementById('btn-smartlog-apply').classList.remove('hidden');
@@ -633,7 +684,7 @@
           </div>
         `).join('');
       } catch (e) {
-        showToast('解析に失敗しました', 'error');
+        alert("解析エラー: " + e.message);
       } finally {
         btn.disabled = false;
         btn.innerHTML = `AI解析する`;
@@ -655,6 +706,7 @@
       showToast('一括記録しました！');
     }
 
+    // --- AI 外食・コンビニ検索（直接JSON抽出） ---
     async function executeGroundedSearch() {
       const key = getApiKey();
       if (!key) { showToast('設定画面でAPIキーを入力してください', 'info'); openSettingsModal(); return; }
@@ -664,37 +716,63 @@
       const resBox = document.getElementById('search-response-box');
       const resText = document.getElementById('search-response-text');
       const candidateCard = document.getElementById('search-log-candidate');
+      const searchBtn = document.getElementById('btn-search-exec');
 
       resBox.classList.remove('hidden');
       candidateCard.classList.add('hidden');
-      resText.innerHTML = `検索中...`;
+      resText.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-sky-600"></i> AIデータベースから「${query}」の栄養数値を抽出中...`;
+      searchBtn.disabled = true;
 
       try {
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${key}`;
-        const prompt = `外食・コンビニ商品「${query}」の公式栄養成分表示を検索し、以下のJSONで回答してください: \`\`\`json\n{"name":"${query}","calories":450,"p":15.5,"f":12.0,"c":62.0,"description":"解説"}\n\`\`\``;
+        const prompt = `外食チェーンやコンビニ商品「${query}」の一般的な公式栄養成分表示（エネルギーkcal、たんぱく質g、脂質g、炭水化物g、商品の解説）を出力してください。`;
+
         const res = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: "OBJECT",
+                properties: {
+                  name: { type: "STRING" },
+                  calories: { type: "NUMBER" },
+                  p: { type: "NUMBER" },
+                  f: { type: "NUMBER" },
+                  c: { type: "NUMBER" },
+                  description: { type: "STRING" }
+                },
+                required: ["name", "calories", "p", "f", "c", "description"]
+              }
+            }
+          })
         });
-        const result = await res.json();
-        const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-        const parsed = extractJSON(text);
 
-        if (parsed && parsed.calories) {
-          lastSearchCandidate = {
-            name: parsed.name || query, calories: Math.round(parsed.calories),
-            p: Number(parsed.p) || 0, f: Number(parsed.f) || 0, c: Number(parsed.c) || 0
-          };
-          resText.innerText = parsed.description || '公式数値を抽出しました。';
-          document.getElementById('search-candidate-name').innerText = lastSearchCandidate.name;
-          document.getElementById('search-candidate-macros').innerText = `${lastSearchCandidate.calories} kcal (P:${lastSearchCandidate.p}g F:${lastSearchCandidate.f}g C:${lastSearchCandidate.c}g)`;
-          candidateCard.classList.remove('hidden');
-        } else {
-          resText.innerText = text || '検索結果がありませんでした。';
-        }
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+
+        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const parsed = JSON.parse(rawText);
+
+        lastSearchCandidate = {
+          name: parsed.name || query,
+          calories: Math.round(parsed.calories || 0),
+          p: Number(parsed.p) || 0,
+          f: Number(parsed.f) || 0,
+          c: Number(parsed.c) || 0
+        };
+
+        resText.innerText = parsed.description;
+        document.getElementById('search-candidate-name').innerText = lastSearchCandidate.name;
+        document.getElementById('search-candidate-macros').innerText = `${lastSearchCandidate.calories} kcal (P:${lastSearchCandidate.p}g F:${lastSearchCandidate.f}g C:${lastSearchCandidate.c}g)`;
+        candidateCard.classList.remove('hidden');
       } catch (e) {
-        resText.innerText = '検索に失敗しました。';
+        console.error("Search Error:", e);
+        resText.innerHTML = `<span class="text-rose-500 font-bold">❌ 検索失敗: ${e.message}</span>`;
+      } finally {
+        searchBtn.disabled = false;
       }
     }
 
@@ -712,6 +790,7 @@
       showToast('食事に記録しました！');
     }
 
+    // --- 献立提案 ---
     function openSuggestModal() {
       const day = getDayData(currentDate);
       const settings = getStorageData().settings || defaultSettings;
@@ -738,14 +817,37 @@
 
       try {
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_TEXT_MODEL}:generateContent?key=${key}`;
-        const prompt = `残り「${gapCal}kcal, P:${gapP}g, F:${gapF}g, C:${gapC}g」に合うおすすめ献立を3つJSON配列で返してください: [{"title":"品名","description":"説明","calories":300,"p":20,"f":5,"c":40}]`;
+        const prompt = `残り「${gapCal}kcal, P:${gapP}g, F:${gapF}g, C:${gapC}g」に合うおすすめ献立を3案提案してください。`;
         const res = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    title: { type: "STRING" },
+                    description: { type: "STRING" },
+                    calories: { type: "NUMBER" },
+                    p: { type: "NUMBER" },
+                    f: { type: "NUMBER" },
+                    c: { type: "NUMBER" }
+                  },
+                  required: ["title", "description", "calories", "p", "f", "c"]
+                }
+              }
+            }
+          })
         });
-        const result = await res.json();
-        const suggestions = extractJSON(result?.candidates?.[0]?.content?.parts?.[0]?.text) || [];
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+
+        const suggestions = JSON.parse(data?.candidates?.[0]?.content?.parts?.[0]?.text);
 
         listEl.innerHTML = suggestions.map(s => `
           <div class="bg-white border border-slate-200 rounded-xl p-3 text-xs space-y-1">
@@ -757,7 +859,7 @@
           </div>
         `).join('');
       } catch (e) {
-        listEl.innerHTML = `<div class="text-center py-4 text-xs text-rose-600">提案に失敗しました</div>`;
+        listEl.innerHTML = `<div class="text-center py-4 text-xs text-rose-600">提案失敗: ${e.message}</div>`;
       }
     }
 
